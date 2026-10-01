@@ -1,0 +1,17 @@
+{
+  "name": "오늘홈트 - 맨몸 홈트 챌린지",
+  "short_name": "오늘홈트",
+  "description": "매일 빠짐없이, 내 속도에 맞춰 따라하는 맨몸 홈트 챌린지",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f1220",
+  "theme_color": "#0f1220",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

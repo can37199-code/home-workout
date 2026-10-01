@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>아바타 동작 확인</title>
+<style>
+body{margin:0;background:#0f1220;color:#eee;font-family:system-ui;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;padding:8px}
+figure{margin:0;background:#1a1f33;border-radius:12px;padding:6px}canvas{width:100%;height:200px;display:block}
+figcaption{font-size:13px;text-align:center}
+</style></head><body>
+<script type="module">
+import { EXERCISES } from '../js/exercises.js';
+import { Avatar } from '../js/avatar.js';
+const params = new URLSearchParams(location.search);
+const fixed = params.has('p') ? Number(params.get('p')) : null;
+const list = [];
+for (const ex of Object.values(EXERCISES)) {
+  const f = document.createElement('figure');
+  f.innerHTML = `<canvas></canvas><figcaption>${ex.name}</figcaption>`;
+  document.body.append(f);
+  const a = new Avatar(f.querySelector('canvas'));
+  a.setExercise(ex);
+  list.push([a, ex]);
+}
+const t0 = performance.now();
+function loop(t) {
+  for (const [a, ex] of list) a.draw(fixed ?? ((t - t0) / 1000 / ex.base) % 1);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script></body></html>
