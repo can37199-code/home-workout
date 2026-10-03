@@ -1,0 +1,103 @@
+/* 보상 화면 (app.css의 색·글꼴 토큰을 그대로 쓴다) */
+.status { appearance: none; border: 0; background: transparent; padding: 0; display: grid; grid-template-columns: auto 1fr auto auto; gap: 12px; align-items: center; cursor: pointer; text-align: left; color: inherit; }
+.status .lv { font-family: var(--f-num); font-size: 15px; letter-spacing: .04em; white-space: nowrap; }
+.status .lv b { font-weight: 700; }
+.xpbar { display: block; height: 4px; border-radius: 2px; background: var(--line-2); overflow: hidden; min-width: 40px; }
+.xpbar i { display: block; height: 100%; background: var(--ink); border-radius: 2px; }
+.status .coins, .status .shields { display: inline-flex; align-items: center; gap: 4px; font-size: 17px; }
+.status .coins .ico { color: var(--coral); width: 18px; height: 18px; }
+.status .shields .ico { color: var(--teal); width: 18px; height: 18px; }
+.btn-reward { display: inline-flex; align-items: center; gap: 4px; font-family: var(--f-num); font-size: 17px; opacity: .85; }
+.btn-reward .ico { width: 18px; height: 18px; }
+.link-btn { padding: 4px 0; font-size: 13px; font-weight: 500; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; justify-content: flex-start; text-align: left; }
+.note.good { border-left-color: var(--teal); }
+.note .btn { align-self: flex-start; }
+
+.missions { list-style: none; margin: 0; padding: 0; }
+.missions li { display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.missions li:last-child { border-bottom: 0; }
+.missions .m-label { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; }
+.missions .m-label .ico { width: 18px; height: 18px; color: var(--teal); stroke-width: 2.4; }
+.missions .num { font-size: 18px; font-weight: 600; }
+.missions .num small { font-size: 13px; color: var(--muted); font-weight: 500; }
+.missions .bar, .coupons .bar { grid-column: 1 / -1; height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; display: block; }
+.missions .bar i, .coupons .bar i { display: block; height: 100%; background: var(--coral); }
+.missions li.done .bar i { background: var(--teal); }
+
+.earn { display: inline-flex; align-items: center; gap: 4px; font-size: 24px; font-weight: 700; color: var(--coral); }
+.earn .ico { width: 20px; height: 20px; }
+.earn-list { list-style: none; margin: 0; padding: 0; }
+.earn-list li { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px dashed var(--line); font-size: 14px; }
+.earn-list li span { display: inline-flex; align-items: center; gap: 6px; }
+.earn-list .ico { width: 16px; height: 16px; color: var(--teal); }
+.earn-list b { font-size: 18px; font-weight: 600; }
+.lvline { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; font-family: var(--f-num); font-size: 15px; }
+.wallet .lvline { grid-template-columns: 1fr auto; }
+.levelup { font-weight: 700; color: var(--teal); }
+.new-badges { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.badges { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.badge { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding: 12px 6px; border-radius: 10px; background: var(--surface); min-width: 0; }
+.badge .ico { width: 26px; height: 26px; }
+.badge b { font-size: 13px; font-weight: 600; }
+.badge small { font-size: 11px; color: var(--muted); line-height: 1.35; }
+.badge.got .ico { color: var(--coral); }
+.badge.locked { opacity: .55; }
+.new-badges .badge { flex-direction: row; text-align: left; padding: 8px 12px; background: var(--teal-soft); }
+.new-badges .badge .ico { color: var(--teal); width: 20px; height: 20px; }
+.new-badges .badge small { margin-left: 4px; }
+
+.cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; perspective: 800px; }
+.card-flip { appearance: none; border: 0; padding: 0; aspect-ratio: 3 / 4; position: relative; cursor: pointer; background: none; color: inherit; transform-style: preserve-3d; transition: transform .55s cubic-bezier(.2,.8,.2,1), opacity .3s; }
+.card-flip span { position: absolute; inset: 0; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.card-flip .back { background: var(--ink); color: var(--on-ink); }
+.card-flip .back .ico { width: 30px; height: 30px; }
+.card-flip .front { background: var(--surface); transform: rotateY(180deg); box-shadow: inset 0 0 0 2px var(--line-2); padding: 8px; text-align: center; }
+.card-flip .front small { font-family: var(--f-num); font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.card-flip .front b { font-size: 15px; }
+.card-flip.flipped { transform: rotateY(180deg); }
+.card-flip.rare .front { box-shadow: inset 0 0 0 2px var(--teal); }
+.card-flip.rare .front small { color: var(--teal); }
+.card-flip.legend .front { background: var(--coral); color: #fff; box-shadow: none; }
+.card-flip.legend .front small { color: #fff; }
+.card-flip.dim { opacity: .35; pointer-events: none; }
+
+.wallet { display: flex; flex-direction: column; gap: 14px; padding-bottom: 18px; border-bottom: 1px solid var(--ink); }
+.wallet-coins b { display: block; font-size: 72px; font-weight: 700; line-height: .9; letter-spacing: -0.02em; color: var(--coral); }
+.wallet-side { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--line); }
+.wallet-side > div { padding-top: 12px; display: flex; flex-direction: column; }
+.wallet-side > div + div { padding-left: 16px; border-left: 1px solid var(--line); }
+.wallet-side b { font-size: 34px; font-weight: 600; line-height: 1; }
+.wallet-side b small { font-size: 16px; color: var(--muted); margin-left: 2px; }
+.wallet-side > div > small { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+.coupons { list-style: none; margin: 0; padding: 0; }
+.coupons li { display: flex; flex-direction: column; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.cp-main { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.cp-cost { display: inline-flex; align-items: center; gap: 4px; font-size: 20px; font-weight: 600; }
+.cp-cost .ico { width: 16px; height: 16px; color: var(--coral); }
+.cp-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.cp-actions > span:last-child { display: inline-flex; gap: 6px; }
+.btn:disabled { opacity: .45; cursor: default; }
+.cp-form { display: grid; grid-template-columns: 1fr 88px auto; gap: 8px; }
+.cp-form #cpDelete { grid-column: 1 / -1; justify-self: start; padding-left: 0; }
+.redeemed { list-style: none; margin: 0; padding: 0; }
+.redeemed li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.redeemed li span { display: flex; flex-direction: column; }
+.redeemed li.used b { text-decoration: line-through; color: var(--muted); }
+
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.compare figure { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.compare .ph { aspect-ratio: 3 / 4; border-radius: 10px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; display: grid; place-items: center; color: var(--muted); font-size: 13px; }
+.compare .ph img { width: 100%; height: 100%; object-fit: cover; }
+.compare figcaption { font-family: var(--f-num); font-size: 14px; color: var(--muted); letter-spacing: .04em; }
+
+.ledger { list-style: none; margin: 0; padding: 0; }
+.ledger li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.ledger b { font-size: 17px; font-weight: 600; color: var(--coral); }
+.ledger b.minus { color: var(--muted); }
+
+.p-reward { align-self: center; font-size: 12px; font-weight: 600; color: #f06a55; background: #f06a5518; border-radius: 999px; padding: 3px 10px; margin-top: -2px; }
+
+.toast { position: fixed; left: 50%; bottom: calc(84px + var(--safe-b)); transform: translateX(-50%); z-index: 60; background: var(--ink); color: var(--on-ink); padding: 11px 16px; border-radius: 10px; font-size: 14px; font-weight: 500; max-width: calc(100% - 32px); box-shadow: 0 6px 20px #0003; animation: rise .25s cubic-bezier(.2,.8,.2,1); transition: opacity .3s; }
+.toast.out { opacity: 0; }

@@ -45,7 +45,8 @@ const median = (a) => {
 };
 const secText = (s) => { s = Math.max(0, Math.ceil(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 
-export function runWorkout(root, { plan, title, onFinish, onExit }) {
+// open: 최고 기록 도전 모드 (목표 없이 할 수 있는 만큼), bonus: "완주하면 +N" 안내 문구
+export function runWorkout(root, { plan, onFinish, onExit, open = false, best = 0, bonus = '' }) {
   const prefs = db().prefs;
   voiceOn = prefs.voice;
 
@@ -60,6 +61,8 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
     }
   });
   const workTotal = steps.filter((s) => s.kind === 'work').length;
+  const startedAt = Date.now();
+  let skipped = 0, resisted = false;
 
   root.innerHTML = `
   <div class="player">
@@ -69,6 +72,7 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
       <button class="icon-btn" data-act="music" id="pMusic" aria-label="음악 바꾸기">${icon('music')}</button>
     </header>
     <div class="p-bar" id="pBar"></div>
+    ${bonus ? `<div class="p-reward">${bonus}</div>` : ''}
     <div class="p-stage"><canvas id="pCanvas"></canvas><video id="pVideo" class="hidden"></video><div class="p-badge" id="pBadge"></div></div>
     <div class="p-count"><span id="pBig">0</span><small id="pSmall"></small></div>
     <div class="p-sub" id="pSub"></div>
@@ -131,6 +135,12 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
     if (step?.kind === 'work') { waiting = false; renderActions(); }
   }
 
+  // 지금 단계를 끝까지 하지 않고 넘어가면 건너뛴 세트로 센다
+  function leaving() {
+    if (open || step?.kind !== 'work') return;
+    if (ex.type === 'reps' ? count < step.item.target : timeLeft > 2) skipped++;
+  }
+
   function enter(i) {
     idx = i; step = steps[i];
     if (!step) return finish();
@@ -151,14 +161,15 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
 
     if (step.kind === 'intro') {
       timeLeft = 6;
-      $('pSet').textContent = `${step.item.sets}세트 · ${ex.type === 'hold' ? step.item.target + '초' : step.item.target + (ex.unit ? `회 (${ex.unit})` : '회')}`;
+      $('pSet').textContent = open ? `최고 기록 도전 · 지금 최고 ${best}${ex.type === 'hold' ? '초' : '회'}`
+        : `${step.item.sets}세트 · ${ex.type === 'hold' ? step.item.target + '초' : step.item.target + (ex.unit ? `회 (${ex.unit})` : '회')}`;
       $('pBadge').textContent = '다음 동작 미리보기';
       $('pSub').innerHTML = `<ul class="tips">${ex.tips.map((t) => `<li>${t}</li>`).join('')}</ul>`;
       speak(`${ex.name}. 준비하세요`);
     } else if (step.kind === 'work') {
-      $('pSet').textContent = `세트 ${step.set} / ${step.item.sets}`;
+      $('pSet').textContent = open ? '할 수 있는 만큼 끝까지' : `세트 ${step.set} / ${step.item.sets}`;
       $('pBadge').textContent = '';
-      timeLeft = ex.type === 'hold' ? step.item.target : 0;
+      timeLeft = open ? 0 : ex.type === 'hold' ? step.item.target : 0;
       $('pSub').textContent = '';
       if (step.set > 1 || ex.type === 'hold') speak(ex.type === 'hold' ? '시작' : `${step.set}세트 시작`);
       else speak('시작');
@@ -180,7 +191,13 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
     } else if (step.kind === 'rest') {
       a.innerHTML = `<div class="row"><button class="btn ghost" data-act="plus">+10초</button><button class="btn primary" data-act="next">휴식 건너뛰기</button></div>`;
     } else if (ex.type === 'hold') {
-      a.innerHTML = `<button class="btn ghost big" data-act="next">세트 완료</button>`;
+      a.innerHTML = `<button class="btn ghost big" data-act="next">${open ? '기록 끝내기' : '세트 완료'}</button>`;
+    } else if (open && prefs.mode === 'tap') {
+      a.innerHTML = `<div class="row"><button class="btn ghost small" data-act="next">끝</button>
+        <button class="btn tap" data-act="tap">1회 완료<span>Tap</span></button></div>`;
+    } else if (open) {
+      a.innerHTML = `<div class="row"><button class="btn ghost small" data-act="undo">−1</button>
+        <button class="btn ghost" data-act="next">기록 끝내기</button></div>`;
     } else if (prefs.mode === 'tap') {
       a.innerHTML = `<div class="row"><button class="btn ghost small" data-act="undo">−1</button>
         <button class="btn tap" data-act="tap">1회 완료<span>Tap</span></button></div>`;
@@ -193,13 +210,13 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
   function renderCount() {
     if (step.kind === 'work' && ex.type === 'reps') {
       $('pBig').textContent = count;
-      $('pSmall').textContent = `/ ${step.item.target}회`;
+      $('pSmall').textContent = open ? `최고 ${best}회` : `/ ${step.item.target}회`;
       if (prefs.mode === 'tap') {
         $('pSub').textContent = waiting ? '기다리는 중 · 1회 하고 나서 탭!' : `내 페이스 ${dur.toFixed(1)}초/회`;
       }
     } else {
       $('pBig').textContent = secText(timeLeft);
-      $('pSmall').textContent = step.kind === 'work' ? '남음' : step.kind === 'rest' ? '휴식' : '준비';
+      $('pSmall').textContent = step.kind === 'work' ? (open ? `최고 ${best}초` : '남음') : step.kind === 'rest' ? '휴식' : '준비';
     }
   }
 
@@ -257,12 +274,13 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
         const speed = step.kind === 'work' ? 1 : 0.6;
         vel = speed / ex.base;
         phase += dt * vel;
-        timeLeft -= dt;
+        if (open && step.kind === 'work') { timeLeft += dt; renderCount(); }
+        else timeLeft -= dt;
         const sec = Math.ceil(timeLeft);
-        if (sec !== lastSpoken && sec <= 3 && sec >= 1) { lastSpoken = sec; beep(660, 90); }
+        if (!(open && step.kind === 'work') && sec !== lastSpoken && sec <= 3 && sec >= 1) { lastSpoken = sec; beep(660, 90); }
         if (step.kind === 'work' && sec !== lastSpoken && sec > 3 && sec % 10 === 0) { lastSpoken = sec; speak(`${sec}초`); }
         renderCount();
-        if (timeLeft <= 0) {
+        if (!(open && step.kind === 'work') && timeLeft <= 0) {
           if (step.kind === 'work') { reps[ex.id] = (reps[ex.id] || 0) + step.item.target; beep(1046, 180); }
           enter(idx + 1);
         }
@@ -278,7 +296,10 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
     const kg = latestWeight();
     let kcal = kcalFor(1.5, kg, restSec);
     for (const [id, s] of Object.entries(workSec)) kcal += kcalFor(EXERCISES[id].met, kg, s);
-    return { sec: Math.round(elapsed), kcal: Math.round(kcal), reps };
+    const doneWork = steps.slice(0, Math.max(0, idx)).filter((s) => s.kind === 'work').length;
+    const ratio = idx >= steps.length ? 1 : doneWork / workTotal;
+    const record = open ? (ex.type === 'hold' ? Math.floor(timeLeft) : count) : 0;
+    return { sec: Math.round(elapsed), kcal: Math.round(kcal), reps, full: ratio >= 1 && skipped === 0, ratio, skipped, resisted, startedAt, record };
   }
 
   function cleanup() {
@@ -317,19 +338,23 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
         if (count > 0) { count--; reps[ex.id]--; renderCount(); }
         break;
       case 'next':
-        if (step.kind === 'work' && ex.type === 'hold') reps[ex.id] = (reps[ex.id] || 0) + Math.round(step.item.target - Math.max(0, timeLeft));
-        enter(idx + 1); break;
+        if (step.kind === 'work' && ex.type === 'hold') reps[ex.id] = (reps[ex.id] || 0) + Math.round(open ? timeLeft : step.item.target - Math.max(0, timeLeft));
+        leaving(); enter(idx + 1); break;
       case 'plus': timeLeft += 10; renderCount(); break;
       case 'pause': case 'music':
         paused = true; renderMusicPick(); $('pPause').classList.remove('hidden');
         speechSynthesis?.cancel(); music.setSoft(true); break;
       case 'resume': paused = false; $('pPause').classList.add('hidden'); music.setSoft(step.kind !== 'work'); break;
-      case 'skipStep': paused = false; $('pPause').classList.add('hidden'); enter(idx + 1); break;
-      case 'exit':
-        if (await ask('운동 끝내기', '여기서 끝낼까요? 지금까지 한 만큼은 "부분 완료"로 기록돼요.', '끝내기', { cancel: '계속하기', danger: true })) {
+      case 'skipStep': paused = false; $('pPause').classList.add('hidden'); leaving(); enter(idx + 1); break;
+      case 'exit': {
+        const left = steps.slice(idx).filter((x) => x.kind === 'work').length;
+        const msg = open ? '지금까지 한 만큼으로 기록할까요?'
+          : `남은 세트는 ${left}개예요. 지금 끝내면 완주 보너스와 연속 기록 보너스를 받지 못하고, 한 만큼만 부분 완료로 기록돼요.${left <= 2 ? ' 거의 다 왔어요!' : ''}`;
+        if (await ask(open ? '도전 끝내기' : '정말 그만할까요?', msg, '끝내기', { cancel: open ? '계속하기' : '1세트만 더 할게요', danger: true })) {
           cleanup(); onExit(result());
-        }
+        } else resisted = true;
         break;
+      }
     }
   });
   root.querySelector('.player').addEventListener('input', (e) => {

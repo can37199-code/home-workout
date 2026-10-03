@@ -48,3 +48,18 @@ export function estimateSec(plan, tempo = {}) {
 
 // 소모 칼로리 = MET × 3.5 × 체중(kg) / 200 × 분
 export const kcalFor = (met, kg, sec) => (met * 3.5 * kg / 200) * (sec / 60);
+
+// 미니멈 데이: 오늘 루틴의 앞 3개 동작을 1세트씩, 횟수 60%로 (약 7분)
+export function miniPlan(plan) {
+  const items = plan.items.slice(0, 3).map((it) => {
+    const ex = EXERCISES[it.id];
+    const t = it.target * 0.6;
+    return { ...it, sets: 1, target: ex.type === 'hold' ? Math.max(15, Math.round(t / 5) * 5) : Math.max(5, Math.round(t)) };
+  });
+  return { ...plan, title: '7분 미니 운동', tag: 'Mini', rest: 20, items, mini: true };
+}
+
+// 최고 기록 도전: 한 동작을 할 수 있는 만큼 1세트
+export function challengePlan(id) {
+  return { key: 'PR', title: '최고 기록 도전', tag: 'Challenge', rest: 0, items: [{ id, sets: 1, target: Infinity }] };
+}

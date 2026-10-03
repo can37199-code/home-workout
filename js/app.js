@@ -1,12 +1,13 @@
 import { EXERCISES } from './exercises.js';
 import { MEDIA } from './media.js';
 import { Avatar } from './avatar.js';
-import { LEVELS, dayPlan, estimateSec } from './plan.js';
+import { LEVELS, dayPlan, estimateSec, miniPlan, challengePlan } from './plan.js';
 import { runWorkout } from './player.js';
 import { ask, notify } from './ui.js';
 import { music, STYLES } from './music.js';
 import { saveBlob, loadBlob } from './idb.js';
 import { icon } from './icons.js';
+import * as RW from './rewards.js';
 import {
   db, save, replaceAll, resetAll, today, addDays, diffDays, parse, fmt, dayIndex, streak, bestStreak, latestWeight,
 } from './store.js';
@@ -64,7 +65,7 @@ function go(view, arg) {
   if (!c && view !== 'setup') view = 'setup';
   nav.classList.toggle('hidden', view === 'setup' || view === 'player' || view === 'finish');
   nav.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.go === view));
-  ({ setup, home, calendar, stats, settings, player, finish })[view](arg);
+  ({ setup, home, calendar, rewards, stats, settings, player, finish })[view](arg);
 }
 nav.addEventListener('click', (e) => { const b = e.target.closest('[data-go]'); if (b) go(b.dataset.go); });
 
@@ -140,9 +141,40 @@ function ticks(c, t) {
   return `<div class="ticks" aria-hidden="true">${html}</div>`;
 }
 
+// 홈 상단: 레벨·코인·방어권
+function statusBar() {
+  const L = RW.levelInfo(); const r = db().rewards;
+  return `<button class="status" data-go-to="rewards" aria-label="보상 보기">
+    <span class="lv"><b>Lv.${L.lv}</b> ${L.title}</span>
+    <span class="xpbar"><i style="width:${Math.round(L.pct * 100)}%"></i></span>
+    <span class="coins">${icon('coin')}<b class="num">${r.coins.toLocaleString()}</b></span>
+    <span class="shields" title="스트릭 방어권">${icon('shield')}<b class="num">${r.shields}</b></span>
+  </button>`;
+}
+
+function missionsBlock(compact = true) {
+  const w = RW.weeklyMissions();
+  return `<div class="block">
+    <div class="block-head"><h2>이번 주 미션</h2><span class="muted small">${w.claimed ? '보상 받음' : w.allDone ? '보상을 받으세요' : '3개 모두 하면 +200 코인 · 방어권'}</span></div>
+    <ul class="missions">${w.list.map((m) => `<li class="${m.done ? 'done' : ''}">
+      <span class="m-label">${m.done ? icon('check') : ''}${m.label}</span>
+      <span class="num">${m.value.toLocaleString()}<small> / ${m.target.toLocaleString()}${m.unit}</small></span>
+      <span class="bar"><i style="width:${(m.value / m.target) * 100}%"></i></span></li>`).join('')}</ul>
+    ${w.allDone && !w.claimed ? `<button class="btn primary big" data-act="claim"><span>주간 보상 받기</span>${icon('gift')}</button>` : ''}
+  </div>`;
+}
+
+async function claimWeeklyUI() {
+  const res = RW.claimWeekly();
+  if (!res) return;
+  await notify(`코인 +${res.coins}, XP +${res.xp}${res.shield ? ', 스트릭 방어권 +1' : ''}${res.badges.length ? `
+새 배지: ${res.badges.map((b) => b.name).join(', ')}` : ''}`, '주간 미션 달성');
+}
+
 function home() {
   const c = db().challenge;
   const t = today();
+  const usedShields = RW.applyShields();
   const i = dayIndex(t);
   const st = streak();
   const doneCount = challengeDays(c);
@@ -173,6 +205,11 @@ function home() {
     const yi = dayIndex(y);
     const missedY = yi != null && !db().logs[y]?.done;
     const next = i + 1 < c.days ? dayPlan(c, i + 1) : null;
+    const comeback = !log?.done && RW.isComeback(t);
+    const miniLeft = !log?.done && !RW.miniUsedThisWeek(t);
+    const isChallengeDay = plan.key === 'R';
+    const photoDay = [0, 6, 13, 29, c.days - 1].includes(i) && !db().rewards.photos[t];
+    const preview = RW.previewFull(t);
     body = `
     <div class="today">
       <div class="today-top">
@@ -191,12 +228,22 @@ function home() {
       ${log?.done
         ? `<p class="done-line">${icon('check')} 오늘 운동을 마쳤어요 · ${minText(log.sec)} · ${log.kcal}kcal</p>
            <button class="btn ghost big" data-act="start" data-date="${t}"><span>한 번 더 하기</span>${icon('arrow')}</button>`
-        : `<p class="cheer">${CHEERS[i % CHEERS.length]}</p>
-           <button class="btn primary big" data-act="start" data-date="${t}"><span>${log?.partial ? '이어서 다시 하기' : '오늘 운동 시작'}</span>${icon('arrow')}</button>`}
+        : `<p class="cheer">${comeback ? '다시 왔네요. 오늘 끝내면 기본 코인이 2배예요.' : CHEERS[i % CHEERS.length]}</p>
+           <button class="btn primary big" data-act="start" data-date="${t}"><span>${log?.partial ? '이어서 다시 하기' : '오늘 운동 시작'}</span><span class="btn-reward">${icon('coin')}+${preview}</span></button>
+           ${miniLeft ? `<button class="btn link-btn" data-act="mini" data-date="${t}">컨디션이 안 좋다면 7분 미니 운동으로 연속 기록 지키기 · 이번 주 1번 남음</button>` : ''}`}
     </div>
+
+    ${usedShields ? `<div class="note good"><b>스트릭 방어권 ${usedShields}개를 썼어요</b><p class="muted">놓친 날을 메워서 연속 기록이 이어져요. 남은 방어권 ${db().rewards.shields}개.</p></div>` : ''}
+    ${photoDay ? `<div class="note"><b>오늘은 몸 사진 찍는 날 · Day ${i + 1}</b><p class="muted">같은 자리, 같은 각도로 찍어 두면 변화 리포트에서 Day 1과 나란히 비교해 줘요.</p>
+      <button class="btn ghost" data-go-to="rewards" data-anchor="report">${icon('camera')} 사진 기록하러 가기</button></div>` : ''}
 
     ${missedY ? `<div class="note"><b>어제 Day ${yi + 1}을 놓쳤어요</b><p class="muted">오늘 안에 보충하면 연속 기록이 이어져요.</p>
       <button class="btn ghost" data-act="start" data-date="${y}">어제 운동 보충하기</button></div>` : ''}
+
+    ${missionsBlock()}
+
+    ${isChallengeDay ? `<div class="note good"><b>오늘은 도전 데이</b><p class="muted">가벼운 회복 루틴을 끝내고, 한 동작으로 최고 기록에 도전해 보세요. 기록을 깨면 +50 코인.</p>
+      <button class="btn ghost" data-go-to="rewards" data-anchor="pr">${icon('trophy')} 최고 기록 도전하기</button></div>` : ''}
 
     <div class="block">
       <div class="block-head"><h2>오늘의 루틴</h2><span class="muted small">세트 사이 휴식 ${plan.rest}초</span></div>
@@ -205,24 +252,59 @@ function home() {
     </div>`;
   }
 
-  app.innerHTML = `<section class="page"><header class="page-head"><span class="eyebrow">오늘홈트</span>${installBtn()}</header>${body}</section>`;
+  app.innerHTML = `<section class="page"><header class="page-head"><span class="eyebrow">오늘홈트</span>${installBtn()}</header>${statusBar()}${body}</section>`;
   drawThumbs();
   bindInstall();
-  app.querySelectorAll('[data-act="start"]').forEach((b) => b.addEventListener('click', () => go('player', b.dataset.date)));
+  bindCommon(home);
+  app.querySelectorAll('[data-act="start"]').forEach((b) => b.addEventListener('click', () => go('player', { date: b.dataset.date })));
+  app.querySelector('[data-act="mini"]')?.addEventListener('click', (e) => go('player', { date: e.currentTarget.dataset.date, mini: true }));
   app.querySelector('[data-act="new"]')?.addEventListener('click', () => { db().challenge = null; save(); go('setup'); });
 }
 
 // ---------- 플레이어 / 완료 ----------
-function player(date) {
+function player(arg) {
+  if (typeof arg === 'string') arg = { date: arg };
+  if (arg.pr) return prRun(arg.pr);
+  const { date, mini = false } = arg;
   const c = db().challenge;
   const i = dayIndex(date);
   if (i == null) return go('home');
-  const plan = dayPlan(c, i);
+  const plan = mini ? miniPlan(dayPlan(c, i)) : dayPlan(c, i);
+  const comeback = RW.isComeback(date);
+  const already = db().rewards.awarded?.[date] === 'full';
   runWorkout(app, {
     plan,
-    onFinish: (r) => go('finish', { date, r, done: true }),
-    onExit: (r) => { saveLog(date, r, false); go('home'); },
+    bonus: already ? '' : `끝까지 하면 +${RW.previewFull(date, mini)} 코인`,
+    onFinish: (r) => {
+      const prev = db().logs[date];
+      saveLog(date, r, true, { full: r.full || !!prev?.full, ontime: RW.onTime(r.startedAt) || !!prev?.ontime, mini: mini && !prev?.done });
+      if (mini) { db().rewards.miniDays[date] = true; save(); }
+      const award = RW.awardWorkout(date, r, { mini, comeback });
+      go('finish', { date, r, award });
+    },
+    onExit: (r) => {
+      saveLog(date, r, false);
+      const award = RW.awardWorkout(date, r);
+      go('home');
+      if (award.coins) toast(`부분 완료로 기록했어요 · 코인 +${award.coins}`);
+    },
   });
+}
+
+function prRun(id) {
+  const best = db().rewards.pr[id] || 0;
+  const unit = EXERCISES[id].type === 'hold' ? '초' : '회';
+  const done = (r) => {
+    const res = RW.recordPR(id, r.record || 0);
+    go('rewards', 'pr');
+    if (res.improved) {
+      const extra = res.badges?.length ? `\n새 배지: ${res.badges.map((x) => x.name).join(', ')}` : '';
+      notify(`${EXERCISES[id].name} ${res.value}${unit}${res.prev ? ` (이전 ${res.prev}${unit})` : ''} · 코인 +${res.coins}${extra}`, res.prev ? '최고 기록 경신!' : '첫 기록 등록');
+    } else if (r.record) {
+      notify(`이번 기록 ${res.value}${unit} · 최고 기록 ${res.prev}${unit}까지 ${res.prev - res.value + 1}${unit} 남았어요.`, '아깝게 못 깼어요');
+    }
+  };
+  runWorkout(app, { plan: challengePlan(id), open: true, best, onFinish: done, onExit: done });
 }
 
 function saveLog(date, r, done, extra = {}) {
@@ -237,11 +319,22 @@ function saveLog(date, r, done, extra = {}) {
   save();
 }
 
-function finish({ date, r }) {
-  saveLog(date, r, true);
+function toast(msg) {
+  const el = document.createElement('div');
+  el.className = 'toast'; el.textContent = msg;
+  document.body.append(el);
+  setTimeout(() => el.classList.add('out'), 2600);
+  setTimeout(() => el.remove(), 3000);
+}
+
+function finish({ date, r, award }) {
   const st = streak();
   const total = Object.values(r.reps).reduce((a, b) => a + b, 0);
+  const L = RW.levelInfo();
   const milestone = [3, 7, 14, 21, 30, 50, 60, 100].includes(st) ? `<span class="milestone">${icon('flame')} ${st}일 연속 달성</span>` : '';
+  const cardOpen = RW.canDrawCard(date);
+  const earnLines = award.lines.map((l) => `<li><span>${l.shield ? icon('shield') : ''}${l.label}</span><b class="num">${l.coins ? '+' + l.coins : l.shield ? '+1' : ''}</b></li>`).join('');
+  const badgeHtml = award.badges.map((b) => `<span class="badge got">${icon('trophy')}<b>${b.name}</b><small>${b.desc}</small></span>`).join('');
   app.innerHTML = `
   <section class="page finish">
     <div class="finish-hero rise">
@@ -255,6 +348,21 @@ function finish({ date, r }) {
       <div><b>${total}</b><span>총 횟수</span></div>
       <div><b>${st}<small>일</small></b><span>연속 기록</span></div>
     </div>
+
+    <div class="block rise">
+      <div class="block-head"><h2>오늘 받은 보상</h2><span class="num earn">${icon('coin')} +${award.coins}</span></div>
+      <ul class="earn-list">${earnLines}</ul>
+      <div class="lvline"><span><b>Lv.${L.lv}</b> ${L.title}</span><span class="xpbar"><i style="width:${Math.round(L.pct * 100)}%"></i></span><span class="muted small num">${L.into} / ${L.need} XP</span></div>
+      ${award.levelUp ? `<p class="levelup">레벨 업! Lv.${award.levelUp.from} → Lv.${award.levelUp.to} · ${L.titleKo}</p>` : ''}
+      ${badgeHtml ? `<div class="new-badges">${badgeHtml}</div>` : ''}
+    </div>
+
+    ${cardOpen ? `<div class="block" id="cardBlock">
+      <div class="block-head"><h2>보상 카드</h2><span class="muted small">한 장을 골라 뒤집으세요</span></div>
+      <div class="cards">${[0, 1, 2].map((k) => `<button class="card-flip" data-card="${k}" aria-label="카드 ${k + 1}"><span class="back">${icon('gift')}</span><span class="front"></span></button>`).join('')}</div>
+      <p class="muted small center" id="cardMsg">일반 70% · 희귀 25% · 전설 5%</p>
+    </div>` : ''}
+
     <form id="f" class="form">
       <div class="field">
         <label>오늘 컨디션</label>
@@ -265,6 +373,18 @@ function finish({ date, r }) {
       <button class="btn primary big" type="submit" style="margin-top:20px"><span>기록 저장</span>${icon('arrow')}</button>
     </form>
   </section>`;
+  app.querySelector('.cards')?.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-card]');
+    if (!b || app.querySelector('.card-flip.flipped')) return;
+    const card = RW.drawCard(date);
+    if (!card) return;
+    const tierName = card.tier === 'legend' ? 'Legend' : card.tier === 'rare' ? 'Rare' : 'Common';
+    b.querySelector('.front').innerHTML = `<small>${tierName}</small><b>${card.label}</b>`;
+    b.classList.add('flipped', card.tier);
+    app.querySelectorAll('.card-flip').forEach((x) => { if (x !== b) x.classList.add('dim'); });
+    app.querySelector('#cardMsg').textContent = card.tier === 'legend' ? '전설 카드! 오늘 운이 좋네요.' : card.tier === 'rare' ? '희귀 카드를 뽑았어요.' : '내일 또 뽑을 수 있어요.';
+    if (card.badges?.length) toast(`새 배지: ${card.badges.map((x) => x.name).join(', ')}`);
+  });
   app.querySelector('#cond').addEventListener('click', (e) => {
     const b = e.target.closest('button'); if (!b) return;
     app.querySelectorAll('#cond button').forEach((x) => x.classList.toggle('on', x === b));
@@ -341,7 +461,182 @@ function calendar(sel) {
     calMonth = fmt(d).slice(0, 7); clearThumbs(); calendar();
   }));
   app.querySelectorAll('[data-d]').forEach((b) => b.addEventListener('click', () => { clearThumbs(); calendar(b.dataset.d); }));
-  app.querySelector('[data-start]')?.addEventListener('click', (e) => go('player', e.currentTarget.dataset.start));
+  app.querySelector('[data-start]')?.addEventListener('click', (e) => go('player', { date: e.currentTarget.dataset.start }));
+}
+
+// ---------- 공통 버튼 ----------
+function bindCommon(view) {
+  app.querySelectorAll('[data-go-to]').forEach((b) => b.addEventListener('click', () => go(b.dataset.goTo, b.dataset.anchor)));
+  app.querySelector('[data-act="claim"]')?.addEventListener('click', async () => { await claimWeeklyUI(); view(); });
+}
+
+// ---------- 보상 ----------
+async function photoURL(date) {
+  const b = await loadBlob('photo:' + date).catch(() => null);
+  return b ? URL.createObjectURL(b) : null;
+}
+
+// 사진은 긴 변 1080px JPEG로 줄여서 이 폰(IndexedDB)에만 저장한다
+async function shrinkPhoto(file) {
+  const bmp = await createImageBitmap(file);
+  const k = Math.min(1, 1080 / Math.max(bmp.width, bmp.height));
+  const cv = document.createElement('canvas');
+  cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
+  cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
+  return new Promise((res) => cv.toBlob(res, 'image/jpeg', 0.85));
+}
+
+function rewards(anchor) {
+  const r = db().rewards; const c = db().challenge;
+  const L = RW.levelInfo();
+  const photoDays = Object.keys(r.photos).sort();
+  const firstPhoto = photoDays[0], lastPhoto = photoDays.at(-1);
+  const ws = Object.keys(db().weights).sort();
+  const w0 = ws.length ? db().weights[ws[0]] : null, w1 = ws.length ? db().weights[ws.at(-1)] : null;
+  const doneDays = Object.values(db().logs).filter((l) => l.done).length;
+
+  const coupons = r.coupons.map((cp) => {
+    const pct = Math.min(1, r.coins / cp.cost);
+    return `<li>
+      <div class="cp-main"><b>${esc(cp.name)}</b><span class="num cp-cost">${icon('coin')}${cp.cost.toLocaleString()}</span></div>
+      <span class="bar"><i style="width:${pct * 100}%"></i></span>
+      <div class="cp-actions"><span class="muted small">${pct >= 1 ? '지금 교환할 수 있어요' : `${(cp.cost - r.coins).toLocaleString()} 코인 남음`}</span>
+        <span><button class="btn small" data-edit="${cp.id}">수정</button><button class="btn small ${pct >= 1 ? 'primary' : 'ghost'}" data-redeem="${cp.id}" ${pct >= 1 ? '' : 'disabled'}>교환</button></span></div>
+    </li>`;
+  }).join('');
+
+  const redeemed = r.redeemed.length ? `<ul class="redeemed">${r.redeemed.map((it) => `<li class="${it.used ? 'used' : ''}">
+      <span><b>${esc(it.name)}</b><small class="muted">${new Date(it.at).toLocaleDateString('ko-KR')} 교환</small></span>
+      <button class="btn small ${it.used ? 'ghost' : 'primary'}" data-used="${it.id}">${it.used ? '사용함' : '쓰기'}</button></li>`).join('')}</ul>`
+    : '<p class="muted small">아직 교환한 보상이 없어요.</p>';
+
+  const prRows = RW.PR_EXERCISES.map((id) => {
+    const ex = EXERCISES[id]; const v = r.pr[id];
+    return `<li>${thumb(id)}<div><b>${ex.name}</b><span class="sub">${v ? `최고 ${v}${ex.type === 'hold' ? '초' : '회'}` : '아직 기록 없음'}</span></div>
+      <button class="btn small ghost" data-pr="${id}">도전</button></li>`;
+  }).join('');
+
+  const badges = RW.BADGES.map((b) => {
+    const got = r.badges[b.id];
+    if (!got && b.hidden) return `<li class="badge locked">${icon('lock')}<b>???</b><small>숨겨진 배지</small></li>`;
+    return `<li class="badge ${got ? 'got' : 'locked'}">${icon(got ? 'trophy' : 'lock')}<b>${b.name}</b><small>${got ? `${dateShort(got)} 획득` : b.desc}</small></li>`;
+  }).join('');
+  const badgeCount = Object.keys(r.badges).length;
+
+  const ledger = r.ledger.slice(0, 12).map((x) => `<li><span>${esc(x.note)}<small class="muted"> · ${dateShort(x.date)}</small></span><b class="num ${x.coins < 0 ? 'minus' : ''}">${x.coins > 0 ? '+' : ''}${x.coins || ''}</b></li>`).join('');
+
+  app.innerHTML = `
+  <section class="page">
+    <header class="page-head"><h1>보상</h1></header>
+
+    <div class="wallet">
+      <div class="wallet-coins"><span class="eyebrow">Coins</span><b class="num">${r.coins.toLocaleString()}</b></div>
+      <div class="wallet-side">
+        <div><span class="eyebrow">Level</span><b class="num">${L.lv}</b><small>${L.titleKo}</small></div>
+        <div><span class="eyebrow">Shield</span><b class="num">${r.shields}<small>/ ${RW.MAX_SHIELDS}</small></b><small>방어권</small></div>
+      </div>
+      <div class="lvline"><span class="xpbar"><i style="width:${Math.round(L.pct * 100)}%"></i></span><span class="muted small num">다음 레벨까지 ${L.need - L.into} XP</span></div>
+      <p class="muted small">방어권은 7일 연속할 때마다 1개씩 받아요(최대 2개). 하루를 놓치면 이틀 뒤 자동으로 써서 연속 기록을 지켜 줘요.</p>
+    </div>
+
+    <div class="block">
+      <div class="block-head"><h2>내가 정한 보상</h2><span class="muted small">코인으로 교환</span></div>
+      <ul class="coupons">${coupons}</ul>
+      <form id="cpForm" class="cp-form">
+        <input type="hidden" id="cpId">
+        <input id="cpName" placeholder="보상 이름 (예: 마사지 받기)" maxlength="40" aria-label="보상 이름">
+        <input id="cpCost" type="number" inputmode="numeric" min="10" step="10" placeholder="코인" aria-label="필요한 코인">
+        <button class="btn primary" type="submit" id="cpSubmit">${icon('plus')}추가</button>
+        <button class="btn danger hidden" type="button" id="cpDelete">삭제</button>
+      </form>
+      <p class="muted small">하루 완주로 보통 150~250 코인을 받아요. 일주일이면 1,000~1,500 코인 정도예요.</p>
+    </div>
+
+    <div class="block">
+      <div class="block-head"><h2>보상함</h2><span class="muted small">교환한 보상</span></div>
+      ${redeemed}
+    </div>
+
+    ${missionsBlock(false)}
+
+    <div class="block" id="pr">
+      <div class="block-head"><h2>최고 기록 도전</h2><span class="muted small">기록을 깨면 +50 코인</span></div>
+      <ul class="ex-list pr-list">${prRows}</ul>
+    </div>
+
+    <div class="block" id="report">
+      <div class="block-head"><h2>변화 리포트</h2><span class="muted small">사진은 이 폰에만 저장돼요</span></div>
+      <div class="compare">
+        <figure><div class="ph" id="phFirst">${firstPhoto ? '' : '<span>첫 사진</span>'}</div><figcaption>${firstPhoto ? `처음 · ${dateShort(firstPhoto)}` : '처음'}</figcaption></figure>
+        <figure><div class="ph" id="phLast">${lastPhoto && lastPhoto !== firstPhoto ? '' : '<span>최근 사진</span>'}</div><figcaption>${lastPhoto && lastPhoto !== firstPhoto ? `최근 · ${dateShort(lastPhoto)}` : '최근'}</figcaption></figure>
+      </div>
+      <div class="kv"><span>운동한 날 <b>${doneDays}일</b></span><span>체중 <b>${w0 && w1 ? `${w0} → ${w1}kg (${(w1 - w0 > 0 ? '+' : '') + (w1 - w0).toFixed(1)})` : '기록 없음'}</b></span></div>
+      <label class="btn ghost big"><span>${r.photos[today()] ? '오늘 사진 다시 찍기' : '오늘 몸 사진 기록'}</span>${icon('camera')}<input type="file" accept="image/*" id="photoIn" hidden></label>
+      <p class="muted small">Day 1, 7, 14, 30에 같은 자리·같은 각도로 찍으면 변화가 잘 보여요. 매주 첫 사진은 +30 코인.</p>
+    </div>
+
+    <div class="block">
+      <div class="block-head"><h2>배지</h2><span class="muted small">${badgeCount} / ${RW.BADGES.length}</span></div>
+      <ul class="badges">${badges}</ul>
+    </div>
+
+    <div class="block">
+      <div class="block-head"><h2>최근 적립</h2></div>
+      ${ledger ? `<ul class="ledger">${ledger}</ul>` : '<p class="muted small">운동을 마치면 여기에 쌓여요.</p>'}
+    </div>
+  </section>`;
+  drawThumbs();
+  bindCommon(rewards);
+
+  // 사진 표시
+  (async () => {
+    if (firstPhoto) { const u = await photoURL(firstPhoto); if (u) app.querySelector('#phFirst')?.insertAdjacentHTML('afterbegin', `<img src="${u}" alt="처음 몸 사진">`); }
+    if (lastPhoto && lastPhoto !== firstPhoto) { const u = await photoURL(lastPhoto); if (u) app.querySelector('#phLast')?.insertAdjacentHTML('afterbegin', `<img src="${u}" alt="최근 몸 사진">`); }
+  })();
+
+  app.querySelector('#photoIn').addEventListener('change', async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    try {
+      const blob = await shrinkPhoto(f);
+      await saveBlob('photo:' + today(), blob);
+      const res = RW.notePhoto(today());
+      rewards('report');
+      toast(`사진을 기록했어요${res.coins ? ` · 코인 +${res.coins}` : ''}${res.badges.length ? ` · 새 배지 ${res.badges.map((b) => b.name).join(', ')}` : ''}`);
+    } catch { notify('사진을 저장하지 못했어요. 다른 사진으로 다시 시도해 주세요.'); }
+  });
+
+  // 쿠폰
+  const form = app.querySelector('#cpForm');
+  const setEdit = (cp) => {
+    form.querySelector('#cpId').value = cp?.id || '';
+    form.querySelector('#cpName').value = cp?.name || '';
+    form.querySelector('#cpCost').value = cp?.cost || '';
+    form.querySelector('#cpSubmit').innerHTML = cp ? '저장' : `${icon('plus')}추가`;
+    form.querySelector('#cpDelete').classList.toggle('hidden', !cp);
+    if (cp) form.querySelector('#cpName').focus();
+  };
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = form.querySelector('#cpName').value, cost = form.querySelector('#cpCost').value;
+    if (!name.trim() || !Number(cost)) return notify('보상 이름과 필요한 코인을 입력해 주세요.');
+    RW.saveCoupon({ id: form.querySelector('#cpId').value || null, name, cost });
+    rewards();
+  });
+  form.querySelector('#cpDelete').addEventListener('click', async () => {
+    const id = form.querySelector('#cpId').value;
+    if (id && await ask('보상 삭제', '이 보상을 목록에서 지울까요?', '삭제', { danger: true })) { RW.removeCoupon(id); rewards(); }
+  });
+  app.querySelectorAll('[data-edit]').forEach((b) => b.addEventListener('click', () => setEdit(r.coupons.find((x) => x.id === b.dataset.edit))));
+  app.querySelectorAll('[data-redeem]').forEach((b) => b.addEventListener('click', async () => {
+    const cp = r.coupons.find((x) => x.id === b.dataset.redeem);
+    if (!cp || !await ask('보상 교환', `${cp.cost.toLocaleString()} 코인으로 "${cp.name}"을(를) 교환할까요?`, '교환')) return;
+    const res = RW.redeem(cp.id);
+    if (res) { rewards(); notify(`"${cp.name}" 교환 완료! 보상함에 넣어 뒀어요. 마음껏 누리세요.${res.badges.length ? `\n새 배지: ${res.badges.map((x) => x.name).join(', ')}` : ''}`, '교환 완료'); }
+  }));
+  app.querySelectorAll('[data-used]').forEach((b) => b.addEventListener('click', () => { RW.toggleUsed(b.dataset.used); rewards(); }));
+  app.querySelectorAll('[data-pr]').forEach((b) => b.addEventListener('click', () => go('player', { pr: b.dataset.pr })));
+
+  if (anchor) requestAnimationFrame(() => app.querySelector('#' + anchor)?.scrollIntoView({ block: 'start' }));
 }
 
 // ---------- 통계 ----------
@@ -561,7 +856,7 @@ function bindInstall() {
 }
 
 // 하단 탭 아이콘
-nav.querySelectorAll('[data-go]').forEach((b) => b.insertAdjacentHTML('afterbegin', icon({ home: 'today', calendar: 'calendar', stats: 'stats', settings: 'settings' }[b.dataset.go])));
+nav.querySelectorAll('[data-go]').forEach((b) => b.insertAdjacentHTML('afterbegin', icon({ home: 'today', calendar: 'calendar', rewards: 'gift', stats: 'stats', settings: 'settings' }[b.dataset.go])));
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
 navigator.storage?.persist?.();
