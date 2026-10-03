@@ -2,6 +2,10 @@
 // reps: 클립 안에 들어 있는 동작 횟수. 영상이 없는 동작은 아바타가 대신 보여 준다.
 export const MEDIA = {
   squat: { src: 'media/squat.mp4', poster: 'media/squat.jpg', reps: 1 },
+  lunge: { src: 'media/lunge.mp4', poster: 'media/lunge.jpg', reps: 1 },
+  pushup: { src: 'media/pushup.mp4', poster: 'media/pushup.jpg', reps: 1 },
+  plank: { src: 'media/plank.mp4', poster: 'media/plank.jpg', reps: 1 },
+  jumpingJack: { src: 'media/jumpingJack.mp4', poster: 'media/jumpingJack.jpg', reps: 1 },
 };
 
 // 영상 재생을 아바타와 같은 방식(phase 0~1, 속도)으로 맞춘다
