@@ -1,4 +1,5 @@
 import { EXERCISES } from './exercises.js';
+import { MEDIA } from './media.js';
 import { Avatar } from './avatar.js';
 import { LEVELS, dayPlan, estimateSec } from './plan.js';
 import { runWorkout } from './player.js';
@@ -33,11 +34,13 @@ function drawThumbs(scope = app) {
   });
 }
 
+const thumb = (id) => (MEDIA[id] ? `<img src="${MEDIA[id].poster}" alt="">` : `<canvas data-ex="${id}"></canvas>`);
+
 function itemList(plan) {
   return `<ul class="ex-list">${plan.items.map((it) => {
     const ex = EXERCISES[it.id];
     const amount = ex.type === 'hold' ? `${it.target}초` : `${it.target}회`;
-    return `<li><canvas data-ex="${it.id}"></canvas><div><b>${ex.name}</b><span>${it.sets}세트 × ${amount}${ex.unit ? ` · ${ex.unit}` : ''}</span></div></li>`;
+    return `<li>${thumb(it.id)}<div><b>${ex.name}</b><span>${it.sets}세트 × ${amount}${ex.unit ? ` · ${ex.unit}` : ''}</span></div></li>`;
   }).join('')}</ul>`;
 }
 
@@ -391,7 +394,7 @@ function settings() {
     </div>
     <div class="card">
       <h3>동작 도감</h3>
-      <ul class="ex-list">${Object.values(EXERCISES).map((ex) => `<li><canvas data-ex="${ex.id}"></canvas><div><b>${ex.name}</b><span>${ex.tips[0]}</span></div></li>`).join('')}</ul>
+      <ul class="ex-list">${Object.values(EXERCISES).map((ex) => `<li>${thumb(ex.id)}<div><b>${ex.name}</b><span>${ex.tips[0]}</span></div></li>`).join('')}</ul>
     </div>
     <button class="btn ghost danger" data-act="reset">모든 기록 지우기</button>
     <p class="muted small center">오늘홈트 v1 · 데이터는 서버로 전송되지 않아요</p>

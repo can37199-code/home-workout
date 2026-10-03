@@ -1,6 +1,7 @@
 // 운동 플레이어: 아바타가 내 속도에 맞춰 움직이고, 횟수·세트·휴식을 진행한다.
 import { EXERCISES } from './exercises.js';
 import { Avatar } from './avatar.js';
+import { VideoStage } from './media.js';
 import { db, save, latestWeight } from './store.js';
 import { kcalFor } from './plan.js';
 import { getAudioCtx } from './audio.js';
@@ -67,7 +68,7 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
       <button class="icon-btn" data-act="music" id="pMusic" aria-label="음악 바꾸기">🎵</button>
     </header>
     <div class="p-bar"><i id="pBar"></i></div>
-    <div class="p-stage"><canvas id="pCanvas"></canvas><div class="p-badge" id="pBadge"></div></div>
+    <div class="p-stage"><canvas id="pCanvas"></canvas><video id="pVideo" class="hidden"></video><div class="p-badge" id="pBadge"></div></div>
     <div class="p-count"><span id="pBig">0</span><small id="pSmall"></small></div>
     <div class="p-sub" id="pSub"></div>
     <div class="p-mode" id="pMode">
@@ -90,6 +91,8 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
 
   const $ = (id) => root.querySelector('#' + id);
   const avatar = new Avatar($('pCanvas'));
+  const video = new VideoStage($('pVideo'));
+  let useVideo = false;
 
   let idx = -1, step = null, ex = null;
   let phase = 0, dur = 2, count = 0, timeLeft = 0;
@@ -132,6 +135,9 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
     if (!step) return finish();
     ex = EXERCISES[step.kind === 'rest' ? step.next.id : step.item.id];
     avatar.setExercise(ex);
+    useVideo = video.setExercise(ex.id);
+    $('pVideo').classList.toggle('hidden', !useVideo);
+    $('pCanvas').classList.toggle('hidden', useVideo);
     phase = 0; count = 0; waiting = false; catchUp = 0; intervals = []; lastTap = 0; lastSpoken = -1;
     dur = ex.base / tempoOf(ex.id);
     const doneWork = steps.slice(0, i).filter((s) => s.kind === 'work').length;
@@ -188,7 +194,7 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
       $('pBig').textContent = count;
       $('pSmall').textContent = `/ ${step.item.target}회`;
       if (prefs.mode === 'tap') {
-        $('pSub').textContent = waiting ? '아바타가 기다리는 중 · 하고 나서 탭!' : `내 페이스 ${dur.toFixed(1)}초/회`;
+        $('pSub').textContent = waiting ? '기다리는 중 · 1회 하고 나서 탭!' : `내 페이스 ${dur.toFixed(1)}초/회`;
       }
     } else {
       $('pBig').textContent = secText(timeLeft);
@@ -226,6 +232,8 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
   function tick(t) {
     const dt = Math.min(0.1, prevT ? (t - prevT) / 1000 : 0);
     prevT = t;
+    let vel = 0;
+    if (paused && useVideo) video.stop();
     if (!paused && step) {
       elapsed += dt;
       if (step.kind === 'work') workSec[ex.id] = (workSec[ex.id] || 0) + dt;
@@ -233,10 +241,12 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
 
       if (step.kind === 'work' && ex.type === 'reps') {
         if (prefs.mode === 'auto') {
-          phase += (dt * tempoOf(ex.id)) / ex.base;
+          vel = tempoOf(ex.id) / ex.base;
+          phase += dt * vel;
           if (phase >= 1) { phase -= 1; addRep(); renderCount(); }
         } else if (!waiting) {
-          phase += catchUp ? dt * catchUp : dt / dur;
+          vel = catchUp || 1 / dur;
+          phase += dt * vel;
           if (phase >= 1) {
             if (catchUp) { catchUp = 0; phase = 0; }
             else { phase = 0; waiting = true; renderCount(); }
@@ -244,7 +254,8 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
         }
       } else {
         const speed = step.kind === 'work' ? 1 : 0.6;
-        phase += (dt * speed) / ex.base;
+        vel = speed / ex.base;
+        phase += dt * vel;
         timeLeft -= dt;
         const sec = Math.ceil(timeLeft);
         if (sec !== lastSpoken && sec <= 3 && sec >= 1) { lastSpoken = sec; beep(660, 90); }
@@ -256,7 +267,8 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
         }
       }
       // 기다리는 동안은 숨쉬는 정도로만 살짝 움직임
-      avatar.draw(waiting ? 0.03 * Math.sin(t / 400) ** 2 : phase);
+      if (useVideo) video.draw(phase, vel, waiting);
+      else avatar.draw(waiting ? 0.03 * Math.sin(t / 400) ** 2 : phase);
     }
     raf = requestAnimationFrame(tick);
   }
@@ -271,6 +283,7 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
   function cleanup() {
     cancelAnimationFrame(raf);
     avatar.destroy();
+    video.stop();
     document.removeEventListener('visibilitychange', onVis);
     wakeLock?.release?.().catch(() => {});
     if ('speechSynthesis' in window) speechSynthesis.cancel();
