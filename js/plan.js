@@ -14,10 +14,10 @@ const BASE = {
 };
 
 const TEMPLATES = {
-  A: { title: '하체 집중', emoji: '🦵', items: ['squat', 'lunge', 'gluteBridge', 'jumpingJack'] },
-  B: { title: '상체·코어', emoji: '💪', items: ['pushup', 'plank', 'crunch', 'legRaise'] },
-  C: { title: '전신 유산소', emoji: '🔥', items: ['jumpingJack', 'highKnees', 'mountainClimber', 'squat', 'burpee'] },
-  R: { title: '가벼운 회복', emoji: '🌿', items: ['gluteBridge', 'plank', 'crunch'] },
+  A: { title: '하체 집중', tag: 'Lower', items: ['squat', 'lunge', 'gluteBridge', 'jumpingJack'] },
+  B: { title: '상체·코어', tag: 'Upper · Core', items: ['pushup', 'plank', 'crunch', 'legRaise'] },
+  C: { title: '전신 유산소', tag: 'Cardio', items: ['jumpingJack', 'highKnees', 'mountainClimber', 'squat', 'burpee'] },
+  R: { title: '가벼운 회복', tag: 'Recovery', items: ['gluteBridge', 'plank', 'crunch'] },
 };
 const CYCLE = ['A', 'B', 'C', 'A', 'B', 'C', 'R'];
 
@@ -33,7 +33,7 @@ export function dayPlan(challenge, index) {
     n = ex.type === 'hold' ? Math.round(n / 5) * 5 : Math.max(3, Math.round(n));
     return { id, sets: key === 'R' ? 1 : lv.sets, target: n };
   });
-  return { key, title: tpl.title, emoji: tpl.emoji, rest: lv.rest, items };
+  return { key, title: tpl.title, tag: tpl.tag, rest: lv.rest, items };
 }
 
 export function estimateSec(plan, tempo = {}) {

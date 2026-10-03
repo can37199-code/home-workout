@@ -20,7 +20,7 @@ $bmp = New-Object System.Drawing.Bitmap ${size},${size}
 $g = [System.Drawing.Graphics]::FromImage($bmp)
 $g.SmoothingMode = 'AntiAlias'
 $rect = New-Object System.Drawing.Rectangle 0,0,${size},${size}
-$br = New-Object System.Drawing.Drawing2D.LinearGradientBrush $rect, ([System.Drawing.Color]::FromArgb(255,255,107,74)), ([System.Drawing.Color]::FromArgb(255,255,160,74)), 45
+$br = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255,19,20,21))
 $g.FillRectangle($br, $rect)
 ${line(k.legN[0], k.legN[1], 16)}
 ${line(k.legN[1], k.legN[2], 14)}
@@ -28,12 +28,12 @@ ${line(k.legN[2], k.legN[3], 10)}
 ${line(k.hip, k.sh, 24)}
 ${line(k.armN[0], k.armN[1], 11)}
 ${line(k.armN[1], k.armN[2], 10)}
-$g.FillEllipse([System.Drawing.Brushes]::White, ${(hx - r).toFixed(1)}, ${(hy - r).toFixed(1)}, ${(2 * r).toFixed(1)}, ${(2 * r).toFixed(1)})
+$g.FillEllipse((New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255,224,80,59))), ${(hx - r).toFixed(1)}, ${(hy - r).toFixed(1)}, ${(2 * r).toFixed(1)}, ${(2 * r).toFixed(1)})
 $bmp.Save('${file}', [System.Drawing.Imaging.ImageFormat]::Png)
 $g.Dispose(); $bmp.Dispose()`;
 }
 const head = `Add-Type -AssemblyName System.Drawing
-function New-Pen($w) { $p = New-Object System.Drawing.Pen ([System.Drawing.Color]::White), $w; $p.StartCap='Round'; $p.EndCap='Round'; return $p }`;
+function New-Pen($w) { $p = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(255,236,237,234)), $w; $p.StartCap='Round'; $p.EndCap='Round'; return $p }`;
 const dir = process.cwd().replace(/^\/c\//, 'C:/');
 const ps = [head,
   script(192, 0.68, `${dir}/icons/icon-192.png`),

@@ -8,6 +8,7 @@ import { getAudioCtx } from './audio.js';
 import { music, STYLES } from './music.js';
 import { ask } from './ui.js';
 import { loadBlob } from './idb.js';
+import { icon } from './icons.js';
 
 const hasMyMusic = () => loadBlob('myMusic').then(Boolean).catch(() => false);
 
@@ -63,11 +64,11 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
   root.innerHTML = `
   <div class="player">
     <header class="p-top">
-      <button class="icon-btn" data-act="pause" aria-label="멈추고 메뉴 열기">✕</button>
+      <button class="icon-btn" data-act="pause" aria-label="멈추고 메뉴 열기">${icon('close')}</button>
       <div class="p-title"><b id="pName"></b><span id="pSet"></span></div>
-      <button class="icon-btn" data-act="music" id="pMusic" aria-label="음악 바꾸기">🎵</button>
+      <button class="icon-btn" data-act="music" id="pMusic" aria-label="음악 바꾸기">${icon('music')}</button>
     </header>
-    <div class="p-bar"><i id="pBar"></i></div>
+    <div class="p-bar" id="pBar"></div>
     <div class="p-stage"><canvas id="pCanvas"></canvas><video id="pVideo" class="hidden"></video><div class="p-badge" id="pBadge"></div></div>
     <div class="p-count"><span id="pBig">0</span><small id="pSmall"></small></div>
     <div class="p-sub" id="pSub"></div>
@@ -75,12 +76,12 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
       <div class="seg">
         <button data-mode="tap">내 속도 맞춤</button><button data-mode="auto">자동 재생</button>
       </div>
-      <label class="tempo" id="pTempo">속도 <input type="range" min="0.5" max="1.6" step="0.05" id="pTempoIn"><output id="pTempoOut"></output></label>
+      <label class="range" id="pTempo">속도 <input type="range" min="0.5" max="1.6" step="0.05" id="pTempoIn"><output id="pTempoOut"></output></label>
     </div>
     <div class="p-actions" id="pActions"></div>
     <div class="p-pause hidden" id="pPause">
       <div class="p-pause-box">
-        <h2>잠깐 멈춤</h2>
+        <h2>Paused</h2>
         <button class="btn primary big" data-act="resume">계속하기</button>
         <div class="music-pick" id="pMusicPick"></div>
         <button class="btn ghost" data-act="skipStep">이 세트 건너뛰기</button>
@@ -119,8 +120,8 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
     $('pMusicPick').innerHTML = `
       <div class="chips">${Object.entries(STYLES).map(([k, v]) =>
         `<button type="button" data-music="${k}" class="${mp.style === k ? 'on' : ''}">${v.label}</button>`).join('')}</div>
-      <label class="tempo">볼륨 <input type="range" min="0.1" max="1" step="0.05" value="${mp.vol}" id="pVol"></label>
-      <label class="switch small"><input type="checkbox" id="pSync" ${mp.sync ? 'checked' : ''}><span>음악 박자를 내 운동 속도에 맞추기</span></label>`;
+      <label class="range">볼륨 <input type="range" min="0.1" max="1" step="0.05" value="${mp.vol}" id="pVol"></label>
+      <label class="switch"><span>박자를 내 운동 속도에 맞추기</span><input type="checkbox" id="pSync" ${mp.sync ? 'checked' : ''}></label>`;
   }
 
   function setMode(m) {
@@ -141,7 +142,7 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
     phase = 0; count = 0; waiting = false; catchUp = 0; intervals = []; lastTap = 0; lastSpoken = -1;
     dur = ex.base / tempoOf(ex.id);
     const doneWork = steps.slice(0, i).filter((s) => s.kind === 'work').length;
-    $('pBar').style.width = `${(doneWork / workTotal) * 100}%`;
+    $('pBar').innerHTML = Array.from({ length: workTotal }, (_, k) => `<i class="${k < doneWork ? 'on' : k === doneWork && step.kind === 'work' ? 'cur' : ''}"></i>`).join('');
     $('pName').textContent = ex.name;
     $('pTempoIn').value = tempoOf(ex.id); $('pTempoOut').textContent = `${tempoOf(ex.id).toFixed(2)}x`;
     root.querySelector('.player').dataset.kind = step.kind;
@@ -151,7 +152,7 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
     if (step.kind === 'intro') {
       timeLeft = 6;
       $('pSet').textContent = `${step.item.sets}세트 · ${ex.type === 'hold' ? step.item.target + '초' : step.item.target + (ex.unit ? `회 (${ex.unit})` : '회')}`;
-      $('pBadge').textContent = '동작 미리보기';
+      $('pBadge').textContent = '다음 동작 미리보기';
       $('pSub').innerHTML = `<ul class="tips">${ex.tips.map((t) => `<li>${t}</li>`).join('')}</ul>`;
       speak(`${ex.name}. 준비하세요`);
     } else if (step.kind === 'work') {
@@ -165,7 +166,7 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
       timeLeft = plan.rest;
       $('pSet').textContent = `다음: 세트 ${step.nextSet} / ${step.next.sets}`;
       $('pBadge').textContent = '휴식 · 다음 동작';
-      $('pSub').textContent = '숨 고르고 물 한 모금 💧';
+      $('pSub').textContent = '숨 고르고 물 한 모금 마셔요';
       speak(`휴식. 다음은 ${ex.name}`);
     }
     $('pMode').classList.toggle('hidden', !(step.kind === 'work' && ex.type === 'reps'));
@@ -182,7 +183,7 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
       a.innerHTML = `<button class="btn ghost big" data-act="next">세트 완료</button>`;
     } else if (prefs.mode === 'tap') {
       a.innerHTML = `<div class="row"><button class="btn ghost small" data-act="undo">−1</button>
-        <button class="btn tap" data-act="tap">1회 완료 <span>👆 탭</span></button></div>`;
+        <button class="btn tap" data-act="tap">1회 완료<span>Tap</span></button></div>`;
     } else {
       a.innerHTML = `<div class="row"><button class="btn ghost small" data-act="undo">−1</button>
         <button class="btn ghost" data-act="next">세트 완료</button></div>`;
@@ -291,7 +292,7 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
   }
 
   function finish() {
-    $('pBar').style.width = '100%';
+    $('pBar').querySelectorAll('i').forEach((i) => { i.className = 'on'; });
     speak('오늘 운동 완료! 수고했어요');
     cleanup();
     onFinish(result());
