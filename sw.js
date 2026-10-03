@@ -1,8 +1,8 @@
 // 오프라인에서도 동작하도록 앱 파일을 캐시한다. 파일을 바꾸면 VERSION을 올린다.
-const VERSION = 'v11';
+const VERSION = 'v13';
 const MEDIA_CACHE = 'media-v4'; // 같은 이름의 영상 파일을 바꾸면 이 값도 올린다
 const FILES = [
-  './', 'index.html', 'manifest.webmanifest', 'css/app.css', 'css/rewards.css',
+  './', 'index.html', 'manifest.webmanifest', 'css/app.css', 'css/rewards.css', 'css/design.css',
   'js/app.js', 'js/audio.js', 'js/avatar.js', 'js/icons.js', 'js/idb.js', 'js/media.js', 'js/music.js', 'js/ui.js',
   'js/exercises.js', 'js/plan.js', 'js/player.js', 'js/push.js', 'js/push-messages.js', 'js/rewards.js', 'js/store.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/badge-96.png',
@@ -61,7 +61,7 @@ self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
 
   // 글꼴(Google Fonts): 한 번 받으면 캐시에서 쓴다. 오프라인이면 시스템 글꼴로 대체된다
-  if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
+  if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com' || (url.hostname === 'cdn.jsdelivr.net' && url.pathname.includes('/pretendard'))) {
     e.respondWith(caches.open('fonts-v1').then(async (c) => (await c.match(e.request)) || fetch(e.request).then((res) => { c.put(e.request, res.clone()); return res; })));
     return;
   }

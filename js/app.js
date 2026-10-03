@@ -67,6 +67,31 @@ function go(view, arg) {
   nav.classList.toggle('hidden', view === 'setup' || view === 'player' || view === 'finish');
   nav.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.go === view));
   ({ setup, home, calendar, rewards, stats, settings, player, finish })[view](arg);
+  enhance();
+}
+
+// 화면이 바뀔 때: 섹션이 차례로 떠오르고, 숫자는 0에서 올라간다
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+function enhance() {
+  const page = app.querySelector('.page');
+  if (!page) return;
+  [...page.children].forEach((el, i) => el.style.setProperty('--d', `${Math.min(i, 8) * 60}ms`));
+  page.classList.add('enter');
+  if (reduceMotion.matches) return;
+  page.querySelectorAll('[data-count]').forEach((el) => {
+    const to = Number(el.dataset.count) || 0, padN = Number(el.dataset.pad) || 0;
+    if (!to) return;
+    const show = (v) => { el.textContent = padN ? String(v).padStart(padN, '0') : v.toLocaleString(); };
+    const t0 = performance.now(), D = 900;
+    show(0);
+    const step = (t) => {
+      const p = Math.min(1, (t - t0) / D);
+      show(Math.round(to * (1 - (1 - p) ** 3)));
+      if (p < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+    setTimeout(() => show(to), D + 200); // 화면이 가려져 애니메이션이 멈춰도 최종 값은 보이게
+  });
 }
 nav.addEventListener('click', (e) => { const b = e.target.closest('[data-go]'); if (b) go(b.dataset.go); });
 
@@ -136,8 +161,8 @@ function ticks(c, t) {
     const d = addDays(c.start, k);
     const l = db().logs[d];
     let cls = l?.done ? 'done' : l?.partial ? 'partial' : diffDays(d, t) > 0 ? 'missed' : '';
-    if (d === t) cls += ' today';
-    html += `<i class="${cls}"></i>`;
+    if (d === t) cls += ' now';
+    html += `<i class="${cls}" style="--k:${k}"></i>`;
   }
   return `<div class="ticks" aria-hidden="true">${html}</div>`;
 }
@@ -148,15 +173,15 @@ function statusBar() {
   return `<button class="status" data-go-to="rewards" aria-label="보상 보기">
     <span class="lv"><b>Lv.${L.lv}</b> ${L.title}</span>
     <span class="xpbar"><i style="width:${Math.round(L.pct * 100)}%"></i></span>
-    <span class="coins">${icon('coin')}<b class="num">${r.coins.toLocaleString()}</b></span>
+    <span class="coins">${icon('coin')}<b class="num" data-count="${r.coins}">${r.coins.toLocaleString()}</b></span>
     <span class="shields" title="스트릭 방어권">${icon('shield')}<b class="num">${r.shields}</b></span>
   </button>`;
 }
 
 function missionsBlock(compact = true) {
   const w = RW.weeklyMissions();
-  return `<div class="block">
-    <div class="block-head"><h2>이번 주 미션</h2><span class="muted small">${w.claimed ? '보상 받음' : w.allDone ? '보상을 받으세요' : '3개 모두 하면 +200 코인 · 방어권'}</span></div>
+  return `<div class="block t-teal">
+    <div class="block-head"><h2>${icon('target')}이번 주 미션</h2><span class="muted small">${w.claimed ? '보상 받음' : w.allDone ? '보상을 받으세요' : '모두 하면 +200 코인'}</span></div>
     <ul class="missions">${w.list.map((m) => `<li class="${m.done ? 'done' : ''}">
       <span class="m-label">${m.done ? icon('check') : ''}${m.label}</span>
       <span class="num">${m.value.toLocaleString()}<small> / ${m.target.toLocaleString()}${m.unit}</small></span>
@@ -184,15 +209,15 @@ function home() {
 
   if (i == null && diffDays(t, c.start) > 0) {
     body = `
-    <div class="today">
+    <div class="today hero-today">
       <span class="eyebrow">시작까지</span>
       <div class="day-big"><span class="d">D-${diffDays(t, c.start)}</span></div>
       <p class="muted">${dateLabel(c.start)}에 Day 1이 시작돼요. 동작을 미리 익혀 두세요.</p>
     </div>
-    <div class="block"><div class="block-head"><h2>Day 1 루틴</h2></div>${itemList(dayPlan(c, 0))}</div>`;
+    <div class="block"><div class="block-head"><h2>${icon('list')}Day 1 루틴</h2></div>${itemList(dayPlan(c, 0))}</div>`;
   } else if (i == null) {
     body = `
-    <div class="today">
+    <div class="today hero-today">
       <span class="eyebrow">Challenge Complete</span>
       <div class="day-big"><span class="d">${doneCount}</span><span class="of">/ ${c.days}일</span></div>
       <p>${c.days}일 챌린지를 마쳤어요. 최고 연속 기록은 ${bestStreak()}일이에요.</p>
@@ -212,12 +237,12 @@ function home() {
     const photoDay = [0, 6, 13, 29, c.days - 1].includes(i) && !db().rewards.photos[t];
     const preview = RW.previewFull(t);
     body = `
-    <div class="today">
+    <div class="today hero-today">
       <div class="today-top">
         <span class="eyebrow">${stamp(t)}</span>
-        <span class="streak"><span class="num">${st}</span>일 연속</span>
+        <span class="streak">${icon('flame')}<span class="num" data-count="${st}">${st}</span>일 연속</span>
       </div>
-      <div class="day-big"><span class="d">${pad2(i + 1)}</span><span class="of">/ ${c.days}</span></div>
+      <div class="day-big"><span class="d" data-count="${i + 1}" data-pad="2">${pad2(i + 1)}</span><span class="of">/ ${c.days}</span></div>
       ${ticks(c, t)}
       <div class="ticks-legend"><span>DAY 1 · ${dateShort(c.start)}</span><span>${doneCount}일 완료</span><span>DAY ${c.days} · ${dateShort(end)}</span></div>
     </div>
@@ -247,7 +272,7 @@ function home() {
       <button class="btn ghost" data-go-to="rewards" data-anchor="pr">${icon('trophy')} 최고 기록 도전하기</button></div>` : ''}
 
     <div class="block">
-      <div class="block-head"><h2>오늘의 루틴</h2><span class="muted small">세트 사이 휴식 ${plan.rest}초</span></div>
+      <div class="block-head"><h2>${icon('list')}오늘의 루틴</h2><span class="muted small">세트 사이 휴식 ${plan.rest}초</span></div>
       ${itemList(plan)}
       ${next ? `<div class="next-day"><span>내일 · Day ${i + 2}</span><b>${next.title}</b></div>` : ''}
     </div>`;
@@ -345,13 +370,13 @@ function finish({ date, r, award }) {
     </div>
     <div class="stat-grid rise">
       <div><b>${Math.max(1, Math.round(r.sec / 60))}<small>분</small></b><span>운동 시간</span></div>
-      <div><b>${r.kcal}<small>kcal</small></b><span>소모 칼로리</span></div>
-      <div><b>${total}</b><span>총 횟수</span></div>
+      <div><b><span data-count="${r.kcal}">${r.kcal}</span><small>kcal</small></b><span>소모 칼로리</span></div>
+      <div><b><span data-count="${total}">${total}</span></b><span>총 횟수</span></div>
       <div><b>${st}<small>일</small></b><span>연속 기록</span></div>
     </div>
 
     <div class="block rise">
-      <div class="block-head"><h2>오늘 받은 보상</h2><span class="num earn">${icon('coin')} +${award.coins}</span></div>
+      <div class="block-head"><h2>${icon('coin')}오늘 받은 보상</h2><span class="num earn">${icon('coin')} +<span data-count="${award.coins}">${award.coins}</span></span></div>
       <ul class="earn-list">${earnLines}</ul>
       <div class="lvline"><span><b>Lv.${L.lv}</b> ${L.title}</span><span class="xpbar"><i style="width:${Math.round(L.pct * 100)}%"></i></span><span class="muted small num">${L.into} / ${L.need} XP</span></div>
       ${award.levelUp ? `<p class="levelup">레벨 업! Lv.${award.levelUp.from} → Lv.${award.levelUp.to} · ${L.titleKo}</p>` : ''}
@@ -359,7 +384,7 @@ function finish({ date, r, award }) {
     </div>
 
     ${cardOpen ? `<div class="block" id="cardBlock">
-      <div class="block-head"><h2>보상 카드</h2><span class="muted small">한 장을 골라 뒤집으세요</span></div>
+      <div class="block-head"><h2>${icon('gift')}보상 카드</h2><span class="muted small">한 장을 골라 뒤집으세요</span></div>
       <div class="cards">${[0, 1, 2].map((k) => `<button class="card-flip" data-card="${k}" aria-label="카드 ${k + 1}"><span class="back">${icon('gift')}</span><span class="front"></span></button>`).join('')}</div>
       <p class="muted small center" id="cardMsg">일반 70% · 희귀 25% · 전설 5%</p>
     </div>` : ''}
@@ -458,7 +483,7 @@ function calendar(sel) {
       <div class="cal-grid">${cells}</div>
       <div class="legend"><span><i class="lg done"></i>완료</span><span><i class="lg partial"></i>부분 완료</span><span><i class="lg today"></i>오늘</span></div>
     </div>
-    <div class="block detail" style="border-top:1px solid var(--ink);padding-top:16px">${detail}</div>
+    <div class="block detail">${detail}</div>
   </section>`;
   drawThumbs();
   app.querySelectorAll('[data-m]').forEach((b) => b.addEventListener('click', () => {
@@ -535,7 +560,7 @@ function rewards(anchor) {
     <header class="page-head"><h1>보상</h1></header>
 
     <div class="wallet">
-      <div class="wallet-coins"><span class="eyebrow">Coins</span><b class="num">${r.coins.toLocaleString()}</b></div>
+      <div class="wallet-coins"><span class="eyebrow">Coins</span><b class="num" data-count="${r.coins}">${r.coins.toLocaleString()}</b></div>
       <div class="wallet-side">
         <div><span class="eyebrow">Level</span><b class="num">${L.lv}</b><small>${L.titleKo}</small></div>
         <div><span class="eyebrow">Shield</span><b class="num">${r.shields}<small>/ ${RW.MAX_SHIELDS}</small></b><small>방어권</small></div>
@@ -545,7 +570,7 @@ function rewards(anchor) {
     </div>
 
     <div class="block">
-      <div class="block-head"><h2>내가 정한 보상</h2><span class="muted small">코인으로 교환</span></div>
+      <div class="block-head"><h2>${icon('gift')}내가 정한 보상</h2><span class="muted small">코인으로 교환</span></div>
       <ul class="coupons">${coupons}</ul>
       <form id="cpForm" class="cp-form">
         <input type="hidden" id="cpId">
@@ -558,19 +583,19 @@ function rewards(anchor) {
     </div>
 
     <div class="block">
-      <div class="block-head"><h2>보상함</h2><span class="muted small">교환한 보상</span></div>
+      <div class="block-head"><h2>${icon('box')}보상함</h2><span class="muted small">교환한 보상</span></div>
       ${redeemed}
     </div>
 
     ${missionsBlock(false)}
 
-    <div class="block" id="pr">
-      <div class="block-head"><h2>최고 기록 도전</h2><span class="muted small">기록을 깨면 +50 코인</span></div>
+    <div class="block t-teal" id="pr">
+      <div class="block-head"><h2>${icon('trophy')}최고 기록 도전</h2><span class="muted small">기록을 깨면 +50 코인</span></div>
       <ul class="ex-list pr-list">${prRows}</ul>
     </div>
 
-    <div class="block" id="report">
-      <div class="block-head"><h2>변화 리포트</h2><span class="muted small">사진은 이 폰에만 저장돼요</span></div>
+    <div class="block t-violet" id="report">
+      <div class="block-head"><h2>${icon('camera')}변화 리포트</h2><span class="muted small">사진은 이 폰에만 저장돼요</span></div>
       <div class="compare">
         <figure><div class="ph" id="phFirst">${firstPhoto ? '' : '<span>첫 사진</span>'}</div><figcaption>${firstPhoto ? `처음 · ${dateShort(firstPhoto)}` : '처음'}</figcaption></figure>
         <figure><div class="ph" id="phLast">${lastPhoto && lastPhoto !== firstPhoto ? '' : '<span>최근 사진</span>'}</div><figcaption>${lastPhoto && lastPhoto !== firstPhoto ? `최근 · ${dateShort(lastPhoto)}` : '최근'}</figcaption></figure>
@@ -581,12 +606,12 @@ function rewards(anchor) {
     </div>
 
     <div class="block">
-      <div class="block-head"><h2>배지</h2><span class="muted small">${badgeCount} / ${RW.BADGES.length}</span></div>
+      <div class="block-head"><h2>${icon('medal')}배지</h2><span class="muted small">${badgeCount} / ${RW.BADGES.length}</span></div>
       <ul class="badges">${badges}</ul>
     </div>
 
     <div class="block">
-      <div class="block-head"><h2>최근 적립</h2></div>
+      <div class="block-head"><h2>${icon('clock')}최근 적립</h2></div>
       ${ledger ? `<ul class="ledger">${ledger}</ul>` : '<p class="muted small">운동을 마치면 여기에 쌓여요.</p>'}
     </div>
   </section>`;
@@ -663,15 +688,15 @@ function stats() {
   <section class="page">
     <header class="page-head"><h1>통계</h1></header>
     <div class="stat-grid">
-      <div><b>${done}<small>/ ${c.days}</small></b><span>완료한 날</span></div>
-      <div><b>${rate}<small>%</small></b><span>달성률</span></div>
+      <div><b><span data-count="${done}">${done}</span><small>/ ${c.days}</small></b><span>완료한 날</span></div>
+      <div><b><span data-count="${rate}">${rate}</span><small>%</small></b><span>달성률</span></div>
       <div><b>${streak()}<small>일</small></b><span>현재 연속 · 최고 ${bestStreak()}일</span></div>
-      <div><b>${Math.round(sec / 60)}<small>분</small></b><span>총 운동 시간</span></div>
-      <div><b>${kcal.toLocaleString()}</b><span>총 소모 kcal</span></div>
+      <div><b><span data-count="${Math.round(sec / 60)}">${Math.round(sec / 60)}</span><small>분</small></b><span>총 운동 시간</span></div>
+      <div><b><span data-count="${kcal}">${kcal.toLocaleString()}</span></b><span>총 소모 kcal</span></div>
       <div><b>${dw == null ? '–' : (dw > 0 ? '+' : '') + dw.toFixed(1)}<small>kg</small></b><span>체중 변화</span></div>
     </div>
     <div class="block">
-      <div class="block-head"><h2>체중</h2>${c.goalWeight ? `<span class="muted small">목표 ${c.goalWeight}kg</span>` : ''}</div>
+      <div class="block-head"><h2>${icon('scale')}체중</h2>${c.goalWeight ? `<span class="muted small">목표 ${c.goalWeight}kg</span>` : ''}</div>
       ${weightChart(c)}
       <form id="wf" class="inline-form">
         <input type="date" id="wd" value="${today()}" aria-label="날짜"><input type="number" step="0.1" inputmode="decimal" id="wv" placeholder="kg" aria-label="체중">
@@ -679,7 +704,7 @@ function stats() {
       </form>
     </div>
     <div class="block">
-      <div class="block-head"><h2>동작별 누적</h2></div>
+      <div class="block-head"><h2>${icon('stats')}동작별 누적</h2></div>
       ${Object.keys(reps).length ? `<ul class="rep-list">${Object.entries(reps).sort((a, b) => b[1] - a[1]).map(([id, n]) =>
         `<li><span>${EXERCISES[id].name}</span><b>${n.toLocaleString()}<span class="muted small"> ${EXERCISES[id].type === 'hold' ? '초' : '회'}</span></b>
         <span class="bar"><i style="width:${(n / maxRep) * 100}%"></i></span></li>`).join('')}</ul>`
@@ -725,14 +750,14 @@ function settings() {
   app.innerHTML = `
   <section class="page">
     <header class="page-head"><h1>설정</h1></header>
-    <div>
-      <div class="set-sec">
-        <h3>Challenge</h3>
+    <div class="stack">
+      <div class="block set">
+        <div class="block-head"><h2>${icon('flag')}챌린지</h2></div>
         <div class="row-between"><div><b>${c.days}일 · ${LEVELS[c.level].label}</b><p class="muted small">${dateLabel(c.start)} 시작</p></div>
           <button class="btn ghost small" data-act="edit">바꾸기</button></div>
       </div>
-      <div class="set-sec" id="pushSec">
-        <h3>Push · 매일 저녁 8시</h3>
+      <div class="block set" id="pushSec">
+        <div class="block-head"><h2>${icon('bell')}푸시 알림</h2><span class="muted small">매일 저녁 8시</span></div>
         <p class="muted small" id="pushStatus">확인하는 중…</p>
         <div class="row"><button class="btn primary" data-act="push-on">푸시 알림 켜기</button><button class="btn ghost" data-act="push-test">알림 미리보기</button></div>
         <details class="hidden" id="pushSub">
@@ -742,25 +767,25 @@ function settings() {
           <div class="row"><button class="btn ghost" data-act="push-copy">구독 정보 복사</button><button class="btn danger" data-act="push-off">알림 끄기</button></div>
         </details>
       </div>
-      <div class="set-sec">
-        <h3>Reminder · 캘린더</h3>
+      <div class="block set">
+        <div class="block-head"><h2>${icon('calendar')}캘린더 알림</h2></div>
         <p class="muted small">푸시와 별개로, 폰 캘린더에 매일 ${c.remindAt} 반복 일정을 넣어 둘 수도 있어요.</p>
         <div class="row"><a class="btn primary" target="_blank" rel="noopener" href="${gcalLink(c)}">구글 캘린더에 추가</a>
           <button class="btn ghost" data-act="ics">.ics 파일 받기</button></div>
       </div>
-      <div class="set-sec">
-        <h3>Theme</h3>
+      <div class="block set">
+        <div class="block-head"><h2>${icon('palette')}화면 테마</h2></div>
         <div class="seg wide" id="theme">${[['system', '시스템 설정'], ['light', '라이트'], ['dark', '다크']].map(([k, v]) => `<button type="button" data-v="${k}" class="${(p.theme || 'system') === k ? 'on' : ''}">${v}</button>`).join('')}</div>
         <p class="muted small">시스템 설정을 고르면 폰의 라이트·다크 모드를 따라가요. 운동 화면은 항상 어두운 화면이에요.</p>
       </div>
-      <div class="set-sec">
-        <h3>Player</h3>
+      <div class="block set">
+        <div class="block-head"><h2>${icon('play')}운동 플레이어</h2></div>
         <label class="switch"><span>음성으로 횟수 세기</span><input type="checkbox" id="voice" ${p.voice ? 'checked' : ''}></label>
         <div class="row-between"><span class="muted small">기본 재생 방식 · ${p.mode === 'tap' ? '내 속도 맞춤' : '자동 재생'}</span>
           <button class="btn ghost small" data-act="tempo">학습한 속도 초기화</button></div>
       </div>
-      <div class="set-sec">
-        <h3>Music</h3>
+      <div class="block set">
+        <div class="block-head"><h2>${icon('music')}배경음악</h2></div>
         <div class="chips" id="mStyle">${Object.entries(STYLES).map(([k, v]) => `<button type="button" data-v="${k}" class="${p.music.style === k ? 'on' : ''}">${v.label}</button>`).join('')}</div>
         <label class="range">볼륨 <input type="range" min="0.1" max="1" step="0.05" value="${p.music.vol}" id="mVol"></label>
         <label class="switch"><span>박자를 내 운동 속도에 맞추기</span><input type="checkbox" id="mSync" ${p.music.sync ? 'checked' : ''}></label>
@@ -768,17 +793,18 @@ function settings() {
           <label class="btn ghost">내 음악 파일<input type="file" accept="audio/*" id="mFile" hidden></label></div>
         <p class="muted small" id="mFileInfo">기본 음악은 앱이 직접 연주하는 비트라 인터넷 없이도 나와요.</p>
       </div>
-      <div class="set-sec">
-        <h3>Backup</h3>
+      <div class="block set">
+        <div class="block-head"><h2>${icon('download')}백업</h2></div>
         <p class="muted small">기록은 이 폰 브라우저에만 저장돼요. 폰을 바꾸거나 앱 데이터를 지우기 전에 백업하세요.</p>
         <div class="row"><button class="btn ghost" data-act="export">백업 파일 저장</button>
           <label class="btn ghost">백업 불러오기<input type="file" accept="application/json" id="imp" hidden></label></div>
       </div>
-      <div class="set-sec">
-        <h3>Exercises</h3>
+      <div class="block set">
+        <div class="block-head"><h2>${icon('dumbbell')}동작 도감</h2></div>
         <ul class="ex-list">${Object.values(EXERCISES).map((ex) => `<li>${thumb(ex.id)}<div><b>${ex.name}</b><span class="sub">${ex.tips[0]}</span></div><span></span></li>`).join('')}</ul>
       </div>
-      <div class="set-sec">
+      <div class="block set">
+        <div class="block-head"><h2>${icon('trash')}데이터</h2></div>
         <button class="btn danger" data-act="reset" style="align-self:flex-start;padding-left:0">모든 기록 지우기</button>
         <p class="muted small">오늘홈트 · 데이터는 서버로 전송되지 않아요</p>
       </div>
