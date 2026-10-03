@@ -27,15 +27,19 @@ export class VideoStage {
     const L = v.duration / this.m.reps;
     if (hold || vel <= 0) {
       if (!v.paused) v.pause();
-      if (Math.abs(v.currentTime) > 0.05) v.currentTime = 0;
+      // 시작 자세에서 기다린다 (클립 끝 프레임은 시작 프레임과 거의 같아서 그대로 둬도 된다)
+      if (v.currentTime > 0.05 && v.currentTime < L - 0.15) v.currentTime = 0;
       return;
     }
-    const rate = Math.max(0.25, Math.min(4, L * vel));
-    if (Math.abs(v.playbackRate - rate) > 0.02) v.playbackRate = rate;
     const target = ((phase % 1) + 1) % 1 * L;
     let diff = v.currentTime - target;
     if (diff > L / 2) diff -= L; else if (diff < -L / 2) diff += L;
-    if (Math.abs(diff) > 0.15 * Math.max(1, rate)) v.currentTime = target;
+    // 위치를 강제로 옮기면(seek) 화면이 멈칫하므로, 많이 어긋났을 때만 옮기고
+    // 평소에는 재생 속도를 살짝 빠르게/느리게 해서 따라잡는다
+    if (Math.abs(diff) > L * 0.3) { v.currentTime = target; diff = 0; }
+    const correction = Math.max(-0.35, Math.min(0.35, -diff / L * 1.5));
+    const rate = Math.max(0.25, Math.min(4, L * vel * (1 + correction)));
+    if (Math.abs(v.playbackRate - rate) > 0.01) v.playbackRate = rate;
     if (v.paused) v.play().catch(() => {});
   }
   stop() { this.v.pause(); }
