@@ -1,0 +1,24 @@
+# 매일 저녁 8시(한국 시간) 운동 알림 푸시
+# 문구는 폰의 서비스 워커가 오늘 기록을 보고 만든다. 여기서는 "알림 시간"이라는 신호만 보낸다.
+# GitHub 예약 실행은 붐비면 몇 분~30분 늦을 수 있다.
+name: 매일 저녁 8시 운동 알림
+
+on:
+  schedule:
+    - cron: '0 11 * * *' # 11:00 UTC = 20:00 KST
+  workflow_dispatch: {}
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --no-save --no-package-lock web-push@3.6.7
+      - run: node tools/send-push.mjs
+        env:
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          PUSH_SUBSCRIPTION: ${{ secrets.PUSH_SUBSCRIPTION }}

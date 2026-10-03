@@ -1,4 +1,5 @@
 // 모든 데이터는 이 폰의 localStorage에만 저장한다.
+import { saveBlob } from './idb.js';
 const KEY = 'homet.v1';
 
 const defaults = () => ({
@@ -41,7 +42,16 @@ let data;
 try { data = withDefaults(JSON.parse(localStorage.getItem(KEY))); } catch { data = defaults(); }
 
 export const db = () => data;
-export function save() { localStorage.setItem(KEY, JSON.stringify(data)); }
+
+// 서비스 워커는 localStorage를 못 읽어서, 푸시 문구를 만들 수 있게 IndexedDB에도 같은 내용을 복사해 둔다
+let mirrorTimer = 0;
+function mirror() {
+  clearTimeout(mirrorTimer);
+  mirrorTimer = setTimeout(() => saveBlob('state', JSON.parse(JSON.stringify(data))).catch(() => {}), 300);
+}
+mirror();
+
+export function save() { localStorage.setItem(KEY, JSON.stringify(data)); mirror(); }
 export function replaceAll(next) { data = withDefaults(next); save(); }
 export function resetAll() { data = defaults(); save(); }
 

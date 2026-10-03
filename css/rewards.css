@@ -101,3 +101,7 @@
 
 .toast { position: fixed; left: 50%; bottom: calc(84px + var(--safe-b)); transform: translateX(-50%); z-index: 60; background: var(--ink); color: var(--on-ink); padding: 11px 16px; border-radius: 10px; font-size: 14px; font-weight: 500; max-width: calc(100% - 32px); box-shadow: 0 6px 20px #0003; animation: rise .25s cubic-bezier(.2,.8,.2,1); transition: opacity .3s; }
 .toast.out { opacity: 0; }
+
+.sub-json { margin: 0; white-space: pre-wrap; word-break: break-all; font-size: 11px; line-height: 1.4; background: var(--surface); border-radius: 8px; padding: 10px; max-height: 8em; overflow: auto; color: var(--ink-2); }
+#pushSub > * + * { margin-top: 10px; }
+#pushSub summary { cursor: pointer; color: var(--muted); font-weight: 600; }

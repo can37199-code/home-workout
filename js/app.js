@@ -8,6 +8,7 @@ import { music, STYLES } from './music.js';
 import { saveBlob, loadBlob } from './idb.js';
 import { icon } from './icons.js';
 import * as RW from './rewards.js';
+import { PUSH_HOUR, pushSupported, currentSubscription, enablePush, disablePush, showNow } from './push.js';
 import {
   db, save, replaceAll, resetAll, today, addDays, diffDays, parse, fmt, dayIndex, streak, bestStreak, latestWeight,
 } from './store.js';
@@ -397,6 +398,10 @@ function finish({ date, r, award }) {
     const w = Number(app.querySelector('#w').value);
     if (w) db().weights[date] = w;
     save(); go('home');
+    // 저녁 8시 알림이 이미 지난 뒤에 운동을 마쳤다면, 오늘의 성과 알림을 지금 보낸다 (8시 전이면 8시 알림이 성과를 정리해 준다)
+    if (new Date().getHours() >= PUSH_HOUR && !db().rewards.recapSent?.[date]) {
+      showNow(db()).then((ok) => { if (ok) { (db().rewards.recapSent ||= {})[date] = true; save(); } });
+    }
   });
 }
 
@@ -726,9 +731,20 @@ function settings() {
         <div class="row-between"><div><b>${c.days}일 · ${LEVELS[c.level].label}</b><p class="muted small">${dateLabel(c.start)} 시작</p></div>
           <button class="btn ghost small" data-act="edit">바꾸기</button></div>
       </div>
+      <div class="set-sec" id="pushSec">
+        <h3>Push · 매일 저녁 8시</h3>
+        <p class="muted small" id="pushStatus">확인하는 중…</p>
+        <div class="row"><button class="btn primary" data-act="push-on">푸시 알림 켜기</button><button class="btn ghost" data-act="push-test">알림 미리보기</button></div>
+        <details class="hidden" id="pushSub">
+          <summary class="small">구독 정보 · 처음 한 번 등록</summary>
+          <p class="small">아래 구독 정보를 복사해서 Claude에게 보내 주세요. 한 번 등록하면 매일 8시에 알림이 와요. 알림을 껐다 다시 켜면 새로 등록해야 해요.</p>
+          <pre class="sub-json" id="pushJson"></pre>
+          <div class="row"><button class="btn ghost" data-act="push-copy">구독 정보 복사</button><button class="btn danger" data-act="push-off">알림 끄기</button></div>
+        </details>
+      </div>
       <div class="set-sec">
-        <h3>Reminder</h3>
-        <p class="muted small">폰 캘린더에 매일 ${c.remindAt} 반복 일정을 넣어 두면 앱을 열지 않아도 알림이 와요.</p>
+        <h3>Reminder · 캘린더</h3>
+        <p class="muted small">푸시와 별개로, 폰 캘린더에 매일 ${c.remindAt} 반복 일정을 넣어 둘 수도 있어요.</p>
         <div class="row"><a class="btn primary" target="_blank" rel="noopener" href="${gcalLink(c)}">구글 캘린더에 추가</a>
           <button class="btn ghost" data-act="ics">.ics 파일 받기</button></div>
       </div>
@@ -771,6 +787,38 @@ function settings() {
   drawThumbs();
   const on = (act, fn) => app.querySelector(`[data-act="${act}"]`).addEventListener('click', fn);
   on('edit', () => go('setup'));
+
+  // 푸시 알림
+  const pushStatus = app.querySelector('#pushStatus');
+  const showSub = (json) => {
+    app.querySelector('#pushSub').classList.toggle('hidden', !json);
+    app.querySelector('#pushJson').textContent = json || '';
+  };
+  const refreshPush = async () => {
+    if (!pushSupported()) { pushStatus.textContent = '이 브라우저는 푸시 알림을 지원하지 않아요. 크롬에서 홈 화면에 설치한 앱으로 열어 주세요.'; return; }
+    const sub = await currentSubscription().catch(() => null);
+    if (Notification.permission === 'denied') pushStatus.textContent = '알림이 차단돼 있어요. 폰 설정 → 앱 → 크롬(또는 오늘홈트) → 알림에서 허용해 주세요.';
+    else if (sub) pushStatus.textContent = '켜져 있어요. 매일 저녁 8시쯤, 운동 전이면 독려를, 운동 후면 오늘의 성과를 알려 줘요.';
+    else pushStatus.textContent = '꺼져 있어요. 켜면 운동 전에는 독려, 운동 후에는 오늘의 성과를 알려 줘요.';
+    showSub(sub ? JSON.stringify(sub.toJSON()) : '');
+  };
+  refreshPush();
+  on('push-on', async () => {
+    try { await enablePush(); await refreshPush(); app.querySelector('#pushSub').open = true; }
+    catch (err) { notify(err.message === 'denied' ? '알림 권한을 허용해야 푸시를 받을 수 있어요.' : '이 브라우저에서는 푸시 알림을 켤 수 없어요.'); }
+  });
+  on('push-test', async () => {
+    if (!(await showNow(db()))) notify('먼저 "푸시 알림 켜기"로 알림 권한을 허용해 주세요.');
+  });
+  on('push-copy', async () => {
+    const t = app.querySelector('#pushJson').textContent;
+    try { await navigator.clipboard.writeText(t); toast('구독 정보를 복사했어요'); }
+    catch { const r = document.createRange(); r.selectNodeContents(app.querySelector('#pushJson')); getSelection().removeAllRanges(); getSelection().addRange(r); toast('길게 눌러 복사하세요'); }
+  });
+  on('push-off', async () => {
+    if (!await ask('푸시 알림 끄기', '이 폰의 푸시 구독을 해제할까요? 다시 켜면 새 구독 정보를 등록해야 해요.', '끄기', { danger: true })) return;
+    await disablePush(); refreshPush();
+  });
   on('ics', () => download(`ohometeu-${c.start}.ics`, icsFile(c), 'text/calendar'));
   on('tempo', () => { p.tempo = {}; save(); notify('동작별 속도를 기본값으로 되돌렸어요.'); });
   on('export', () => download(`ohometeu-backup-${today()}.json`, JSON.stringify(db(), null, 1), 'application/json'));

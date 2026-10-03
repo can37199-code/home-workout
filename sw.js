@@ -1,12 +1,51 @@
 // 오프라인에서도 동작하도록 앱 파일을 캐시한다. 파일을 바꾸면 VERSION을 올린다.
-const VERSION = 'v10';
+const VERSION = 'v11';
 const MEDIA_CACHE = 'media-v4'; // 같은 이름의 영상 파일을 바꾸면 이 값도 올린다
 const FILES = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css', 'css/rewards.css',
   'js/app.js', 'js/audio.js', 'js/avatar.js', 'js/icons.js', 'js/idb.js', 'js/media.js', 'js/music.js', 'js/ui.js',
-  'js/exercises.js', 'js/plan.js', 'js/player.js', 'js/rewards.js', 'js/store.js',
-  'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png',
+  'js/exercises.js', 'js/plan.js', 'js/player.js', 'js/push.js', 'js/push-messages.js', 'js/rewards.js', 'js/store.js',
+  'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/badge-96.png',
 ];
+
+// 알림 문구 생성기 (앱과 같은 파일을 쓴다)
+importScripts('js/push-messages.js');
+
+// 앱이 IndexedDB에 복사해 둔 기록을 읽는다
+function readState() {
+  return new Promise((res) => {
+    const r = indexedDB.open('homet', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('files');
+    r.onerror = () => res(null);
+    r.onsuccess = () => {
+      try {
+        const q = r.result.transaction('files', 'readonly').objectStore('files').get('state');
+        q.onsuccess = () => res(q.result || null);
+        q.onerror = () => res(null);
+      } catch { res(null); }
+    };
+  });
+}
+
+// 매일 저녁 8시 푸시: 받는 순간 오늘 기록을 보고 문구를 만든다 (운동 전이면 독려, 운동 후면 성과 정리)
+self.addEventListener('push', (e) => {
+  let payload = {};
+  try { payload = e.data ? e.data.json() : {}; } catch { /* 내용 없는 푸시 */ }
+  e.waitUntil((async () => {
+    const m = payload.title ? payload : self.buildPushMessage(await readState());
+    await self.registration.showNotification(m.title, {
+      body: m.body, icon: 'icons/icon-192.png', badge: 'icons/badge-96.png', tag: 'daily', renotify: true, data: { url: './' },
+    });
+  })());
+});
+
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((ws) => {
+    for (const w of ws) if ('focus' in w) return w.focus();
+    return self.clients.openWindow('./');
+  }));
+});
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(VERSION).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));
