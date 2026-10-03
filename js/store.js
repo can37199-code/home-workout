@@ -5,18 +5,22 @@ const defaults = () => ({
   challenge: null, // { start, days, level, startWeight, goalWeight, remindAt }
   logs: {},        // 'YYYY-MM-DD' → { done, partial, sec, kcal, reps: {id: n}, condition, memo, at }
   weights: {},     // 'YYYY-MM-DD' → kg
-  prefs: { voice: true, mode: 'tap', tempo: {} },
+  prefs: { voice: true, mode: 'tap', tempo: {}, music: { style: 'house', vol: 0.7, sync: true } },
 });
 
+function withDefaults(raw) {
+  const d = { ...defaults(), ...raw };
+  d.prefs = { ...defaults().prefs, ...d.prefs };
+  d.prefs.music = { ...defaults().prefs.music, ...d.prefs.music };
+  return d;
+}
+
 let data;
-try {
-  data = { ...defaults(), ...JSON.parse(localStorage.getItem(KEY)) };
-  data.prefs = { ...defaults().prefs, ...data.prefs };
-} catch { data = defaults(); }
+try { data = withDefaults(JSON.parse(localStorage.getItem(KEY))); } catch { data = defaults(); }
 
 export const db = () => data;
 export function save() { localStorage.setItem(KEY, JSON.stringify(data)); }
-export function replaceAll(next) { data = { ...defaults(), ...next }; save(); }
+export function replaceAll(next) { data = withDefaults(next); save(); }
 export function resetAll() { data = defaults(); save(); }
 
 // ---- 날짜 ----

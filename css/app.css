@@ -157,3 +157,19 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
 .btn.tap span { font-size: 14px; opacity: .85; font-weight: 600; }
 .p-pause { position: absolute; inset: 0; background: #0f1220e6; display: flex; align-items: center; justify-content: center; z-index: 5; }
 .p-pause-box { display: flex; flex-direction: column; gap: 12px; width: min(320px, 86vw); text-align: center; }
+
+/* 앱 안 대화상자 */
+.modal { position: fixed; inset: 0; background: #0009; display: flex; align-items: center; justify-content: center; z-index: 50; padding: 16px; animation: fade .15s; }
+.modal-box { background: var(--card); border-radius: 20px; padding: 22px 18px 18px; width: min(340px, 100%); display: flex; flex-direction: column; gap: 10px; }
+.modal-msg { color: #d9dcea; white-space: pre-line; }
+.modal-btns { display: flex; gap: 10px; margin-top: 6px; } .modal-btns .btn { flex: 1; }
+.btn.danger-fill { background: var(--danger); color: #fff; }
+@keyframes fade { from { opacity: 0; } }
+
+/* 플레이어 음악 선택 */
+.music-pick { display: flex; flex-direction: column; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.music-pick .chips { justify-content: center; }
+.music-pick .chips button { padding: 7px 12px; font-size: 13px; }
+.switch.small { font-size: 13px; font-weight: 500; color: var(--muted); }
+.switch.small input { width: 18px; height: 18px; }
+.p-pause-box { max-height: 92dvh; overflow-y: auto; }

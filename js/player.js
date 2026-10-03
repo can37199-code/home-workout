@@ -3,6 +3,12 @@ import { EXERCISES } from './exercises.js';
 import { Avatar } from './avatar.js';
 import { db, save, latestWeight } from './store.js';
 import { kcalFor } from './plan.js';
+import { getAudioCtx } from './audio.js';
+import { music, STYLES } from './music.js';
+import { ask } from './ui.js';
+import { loadBlob } from './idb.js';
+
+const hasMyMusic = () => loadBlob('myMusic').then(Boolean).catch(() => false);
 
 const NATIVE = ['', '하나', '둘', '셋', '넷', '다섯', '여섯', '일곱', '여덟', '아홉'];
 const TENS = ['', '열', '스물', '서른', '마흔', '쉰'];
@@ -14,13 +20,14 @@ function speak(text, rate = 1.15) {
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.lang = 'ko-KR'; u.rate = rate;
+  u.onstart = () => music.duck(true);
+  u.onend = u.onerror = () => music.duck(false);
   speechSynthesis.speak(u);
 }
 
-let audioCtx;
 function beep(freq = 880, ms = 120) {
   try {
-    audioCtx ||= new AudioContext();
+    const audioCtx = getAudioCtx();
     const o = audioCtx.createOscillator(), g = audioCtx.createGain();
     o.frequency.value = freq; o.connect(g); g.connect(audioCtx.destination);
     g.gain.setValueAtTime(0.25, audioCtx.currentTime);
@@ -55,9 +62,9 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
   root.innerHTML = `
   <div class="player">
     <header class="p-top">
-      <button class="icon-btn" data-act="exit" aria-label="그만하기">✕</button>
+      <button class="icon-btn" data-act="pause" aria-label="멈추고 메뉴 열기">✕</button>
       <div class="p-title"><b id="pName"></b><span id="pSet"></span></div>
-      <button class="icon-btn" data-act="pause" aria-label="일시정지">⏸</button>
+      <button class="icon-btn" data-act="music" id="pMusic" aria-label="음악 바꾸기">🎵</button>
     </header>
     <div class="p-bar"><i id="pBar"></i></div>
     <div class="p-stage"><canvas id="pCanvas"></canvas><div class="p-badge" id="pBadge"></div></div>
@@ -72,8 +79,9 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
     <div class="p-actions" id="pActions"></div>
     <div class="p-pause hidden" id="pPause">
       <div class="p-pause-box">
-        <h2>잠깐 쉬는 중</h2>
+        <h2>잠깐 멈춤</h2>
         <button class="btn primary big" data-act="resume">계속하기</button>
+        <div class="music-pick" id="pMusicPick"></div>
         <button class="btn ghost" data-act="skipStep">이 세트 건너뛰기</button>
         <button class="btn ghost danger" data-act="exit">운동 끝내기</button>
       </div>
@@ -98,6 +106,20 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
 
   const tempoOf = (id) => prefs.tempo[id] || 1;
 
+  // ---- 배경음악 ----
+  const mp = prefs.music;
+  function syncMusic() {
+    if (!mp.sync || step?.kind !== 'work' || ex.type !== 'reps') return music.resetTempo();
+    music.syncTo(prefs.mode === 'tap' ? dur : ex.base / tempoOf(ex.id));
+  }
+  function renderMusicPick() {
+    $('pMusicPick').innerHTML = `
+      <div class="chips">${Object.entries(STYLES).map(([k, v]) =>
+        `<button type="button" data-music="${k}" class="${mp.style === k ? 'on' : ''}">${v.label}</button>`).join('')}</div>
+      <label class="tempo">볼륨 <input type="range" min="0.1" max="1" step="0.05" value="${mp.vol}" id="pVol"></label>
+      <label class="switch small"><input type="checkbox" id="pSync" ${mp.sync ? 'checked' : ''}><span>음악 박자를 내 운동 속도에 맞추기</span></label>`;
+  }
+
   function setMode(m) {
     prefs.mode = m; save();
     root.querySelectorAll('[data-mode]').forEach((b) => b.classList.toggle('on', b.dataset.mode === m));
@@ -117,6 +139,8 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
     $('pName').textContent = ex.name;
     $('pTempoIn').value = tempoOf(ex.id); $('pTempoOut').textContent = `${tempoOf(ex.id).toFixed(2)}x`;
     root.querySelector('.player').dataset.kind = step.kind;
+    music.setSoft(step.kind !== 'work');
+    syncMusic();
 
     if (step.kind === 'intro') {
       timeLeft = 6;
@@ -192,6 +216,7 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
     if (iv > 0.25 && iv < ex.base * 4) {
       intervals.push(iv); if (intervals.length > 3) intervals.shift();
       dur = clamp(median(intervals), ex.base * 0.45, ex.base * 3);
+      syncMusic();
     }
     if (waiting) { waiting = false; phase = 0; }
     else if (phase > 0.02) catchUp = (1 - phase) / 0.22; // 사용자가 더 빠르면 남은 동작을 빨리 마무리
@@ -249,6 +274,7 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
     document.removeEventListener('visibilitychange', onVis);
     wakeLock?.release?.().catch(() => {});
     if ('speechSynthesis' in window) speechSynthesis.cancel();
+    music.stop();
   }
 
   function finish() {
@@ -258,10 +284,19 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
     onFinish(result());
   }
 
-  root.querySelector('.player').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-act],[data-mode]');
+  root.querySelector('.player').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-act],[data-mode],[data-music]');
     if (!b) return;
     if (b.dataset.mode) return setMode(b.dataset.mode);
+    if (b.dataset.music) {
+      mp.style = b.dataset.music; save();
+      renderMusicPick();
+      if (mp.style === 'mine' && !(await hasMyMusic())) {
+        await ask('내 음악 파일', '설정 → 배경음악에서 폰에 있는 음악 파일을 먼저 골라 주세요.', '알겠어요', { cancel: '닫기' });
+      }
+      await music.start(mp.style, mp.vol); music.setSoft(true); syncMusic();
+      return;
+    }
     switch (b.dataset.act) {
       case 'tap': tap(); break;
       case 'undo':
@@ -271,20 +306,31 @@ export function runWorkout(root, { plan, title, onFinish, onExit }) {
         if (step.kind === 'work' && ex.type === 'hold') reps[ex.id] = (reps[ex.id] || 0) + Math.round(step.item.target - Math.max(0, timeLeft));
         enter(idx + 1); break;
       case 'plus': timeLeft += 10; renderCount(); break;
-      case 'pause': paused = true; $('pPause').classList.remove('hidden'); speechSynthesis?.cancel(); break;
-      case 'resume': paused = false; $('pPause').classList.add('hidden'); break;
+      case 'pause': case 'music':
+        paused = true; renderMusicPick(); $('pPause').classList.remove('hidden');
+        speechSynthesis?.cancel(); music.setSoft(true); break;
+      case 'resume': paused = false; $('pPause').classList.add('hidden'); music.setSoft(step.kind !== 'work'); break;
       case 'skipStep': paused = false; $('pPause').classList.add('hidden'); enter(idx + 1); break;
       case 'exit':
-        if (confirm('운동을 여기서 끝낼까요?\n지금까지 한 만큼은 "부분 완료"로 기록돼요.')) { cleanup(); onExit(result()); }
+        if (await ask('운동 끝내기', '여기서 끝낼까요? 지금까지 한 만큼은 "부분 완료"로 기록돼요.', '끝내기', { cancel: '계속하기', danger: true })) {
+          cleanup(); onExit(result());
+        }
         break;
     }
   });
+  root.querySelector('.player').addEventListener('input', (e) => {
+    if (e.target.id === 'pVol') { mp.vol = Number(e.target.value); save(); music.vol = mp.vol; music.setSoft(true); }
+  });
+  root.querySelector('.player').addEventListener('change', (e) => {
+    if (e.target.id === 'pSync') { mp.sync = e.target.checked; save(); syncMusic(); }
+  });
   $('pTempoIn').addEventListener('input', (e) => {
-    prefs.tempo[ex.id] = Number(e.target.value); save();
+    prefs.tempo[ex.id] = Number(e.target.value); save(); syncMusic();
     $('pTempoOut').textContent = `${Number(e.target.value).toFixed(2)}x`;
   });
 
   setMode(prefs.mode);
+  music.start(mp.style, mp.vol);
   enter(0);
   raf = requestAnimationFrame(tick);
 }

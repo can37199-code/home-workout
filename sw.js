@@ -1,8 +1,8 @@
 // 오프라인에서도 동작하도록 앱 파일을 캐시한다. 파일을 바꾸면 VERSION을 올린다.
-const VERSION = 'v1';
+const VERSION = 'v2';
 const FILES = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
-  'js/app.js', 'js/avatar.js', 'js/exercises.js', 'js/plan.js', 'js/player.js', 'js/store.js',
+  'js/app.js', 'js/audio.js', 'js/avatar.js', 'js/idb.js', 'js/music.js', 'js/ui.js', 'js/exercises.js', 'js/plan.js', 'js/player.js', 'js/store.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png',
 ];
 

@@ -2,6 +2,9 @@ import { EXERCISES } from './exercises.js';
 import { Avatar } from './avatar.js';
 import { LEVELS, dayPlan, estimateSec } from './plan.js';
 import { runWorkout } from './player.js';
+import { ask, notify } from './ui.js';
+import { music, STYLES } from './music.js';
+import { saveBlob, loadBlob } from './idb.js';
 import {
   db, save, replaceAll, resetAll, today, addDays, diffDays, parse, fmt, dayIndex, streak, bestStreak, latestWeight,
 } from './store.js';
@@ -41,6 +44,7 @@ function itemList(plan) {
 // ---------- 화면 전환 ----------
 function go(view, arg) {
   clearThumbs();
+  music.stop();
   window.scrollTo(0, 0);
   const c = db().challenge;
   if (!c && view !== 'setup') view = 'setup';
@@ -372,6 +376,15 @@ function settings() {
       <button class="btn ghost" data-act="tempo">동작별 학습된 속도 초기화</button>
     </div>
     <div class="card">
+      <h3>배경음악</h3>
+      <div class="chips" id="mStyle">${Object.entries(STYLES).map(([k, v]) => `<button type="button" data-v="${k}" class="${p.music.style === k ? 'on' : ''}">${v.label}</button>`).join('')}</div>
+      <label class="tempo">볼륨 <input type="range" min="0.1" max="1" step="0.05" value="${p.music.vol}" id="mVol"></label>
+      <label class="switch"><input type="checkbox" id="mSync" ${p.music.sync ? 'checked' : ''}><span>박자를 내 운동 속도에 맞추기</span></label>
+      <div class="row"><button class="btn ghost" data-act="preview">▶ 미리 듣기</button>
+        <label class="btn ghost">내 음악 파일 고르기<input type="file" accept="audio/*" id="mFile" hidden></label></div>
+      <p class="muted small" id="mFileInfo">기본 음악은 앱이 직접 연주하는 비트라 인터넷 없이도 나와요.</p>
+    </div>
+    <div class="card">
       <h3>백업</h3>
       <p class="muted small">기록은 이 폰 브라우저에만 저장돼요. 폰을 바꾸거나 앱 데이터를 지우기 전에 꼭 백업하세요.</p>
       <div class="row"><button class="btn ghost" data-act="export">백업 파일 저장</button><label class="btn ghost">백업 불러오기<input type="file" accept="application/json" id="imp" hidden></label></div>
@@ -387,19 +400,50 @@ function settings() {
   const on = (act, fn) => app.querySelector(`[data-act="${act}"]`).addEventListener('click', fn);
   on('edit', () => go('setup'));
   on('ics', () => download(`ohometeu-${c.start}.ics`, icsFile(c), 'text/calendar'));
-  on('tempo', () => { p.tempo = {}; save(); alert('동작별 속도를 기본값으로 되돌렸어요.'); });
+  on('tempo', () => { p.tempo = {}; save(); notify('동작별 속도를 기본값으로 되돌렸어요.'); });
   on('export', () => download(`ohometeu-backup-${today()}.json`, JSON.stringify(db(), null, 1), 'application/json'));
   on('reset', () => {
-    if (confirm('정말 모든 기록과 설정을 지울까요? 되돌릴 수 없어요.\n(먼저 백업 파일을 저장해 두는 걸 권해요)')) { resetAll(); go('setup'); }
+    ask('모든 기록 지우기', '정말 모든 기록과 설정을 지울까요? 되돌릴 수 없어요. 먼저 백업 파일을 저장해 두는 걸 권해요.', '모두 지우기', { danger: true })
+      .then((y) => { if (y) { resetAll(); go('setup'); } });
   });
   app.querySelector('#voice').addEventListener('change', (e) => { p.voice = e.target.checked; save(); });
+
+  // 배경음악
+  const m = p.music;
+  let previewing = false;
+  const previewBtn = app.querySelector('[data-act="preview"]');
+  const preview = async (force) => {
+    if (previewing && !force) { music.stop(); previewing = false; previewBtn.textContent = '▶ 미리 듣기'; return; }
+    await music.start(m.style, m.vol);
+    previewing = m.style !== 'off'; previewBtn.textContent = previewing ? '■ 멈추기' : '▶ 미리 듣기';
+  };
+  previewBtn.addEventListener('click', () => preview(false));
+  app.querySelector('#mStyle').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    m.style = b.dataset.v; save();
+    app.querySelectorAll('#mStyle button').forEach((x) => x.classList.toggle('on', x === b));
+    if (previewing || m.style !== 'off') preview(true);
+  });
+  app.querySelector('#mVol').addEventListener('input', (e) => { m.vol = Number(e.target.value); save(); music.vol = m.vol; music.setSoft(false); });
+  app.querySelector('#mSync').addEventListener('change', (e) => { m.sync = e.target.checked; save(); });
+  const info = app.querySelector('#mFileInfo');
+  loadBlob('myMusic').then((b) => { if (b) info.textContent = `내 음악: ${b.name || '저장된 파일'} (${(b.size / 1048576).toFixed(1)}MB)`; }).catch(() => {});
+  app.querySelector('#mFile').addEventListener('change', async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    try {
+      await saveBlob('myMusic', f);
+      m.style = 'mine'; save();
+      notify(`"${f.name}"을(를) 운동 음악으로 정했어요.`);
+      settings();
+    } catch { notify('음악 파일을 저장하지 못했어요. 파일이 너무 크면 더 작은 파일로 시도해 주세요.'); }
+  });
   app.querySelector('#imp').addEventListener('change', async (e) => {
     const f = e.target.files[0]; if (!f) return;
     try {
       const d = JSON.parse(await f.text());
       if (!d.logs || !('challenge' in d)) throw new Error();
-      if (confirm('지금 기록을 백업 파일 내용으로 바꿀까요?')) { replaceAll(d); go('home'); }
-    } catch { alert('백업 파일을 읽지 못했어요.'); }
+      if (await ask('백업 불러오기', '지금 기록을 백업 파일 내용으로 바꿀까요?', '바꾸기')) { replaceAll(d); go('home'); }
+    } catch { notify('백업 파일을 읽지 못했어요.'); }
   });
 }
 
