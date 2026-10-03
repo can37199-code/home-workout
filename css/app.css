@@ -11,12 +11,18 @@
   --safe-b: env(safe-area-inset-bottom, 0px);
   color-scheme: light;
 }
+/* 테마: 설정에서 고른 값이 data-theme(light/dark)으로 붙고, "시스템"이면 폰 설정을 따른다 */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #111213; --surface: #1a1c1d; --ink: #ecedea; --ink-2: #c3c6c3; --muted: #8b9093; --line: #2a2d2f; --line-2: #3a3e40;
     --coral: #f06a55; --coral-soft: #3a211d; --teal: #5aa8a9; --teal-soft: #17302f; --warn: #e3a047;
     --on-ink: #111213; color-scheme: dark;
   }
+}
+:root[data-theme="dark"] {
+  --bg: #111213; --surface: #1a1c1d; --ink: #ecedea; --ink-2: #c3c6c3; --muted: #8b9093; --line: #2a2d2f; --line-2: #3a3e40;
+  --coral: #f06a55; --coral-soft: #3a211d; --teal: #5aa8a9; --teal-soft: #17302f; --warn: #e3a047;
+  --on-ink: #111213; color-scheme: dark;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }

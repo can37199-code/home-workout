@@ -733,6 +733,11 @@ function settings() {
           <button class="btn ghost" data-act="ics">.ics 파일 받기</button></div>
       </div>
       <div class="set-sec">
+        <h3>Theme</h3>
+        <div class="seg wide" id="theme">${[['system', '시스템 설정'], ['light', '라이트'], ['dark', '다크']].map(([k, v]) => `<button type="button" data-v="${k}" class="${(p.theme || 'system') === k ? 'on' : ''}">${v}</button>`).join('')}</div>
+        <p class="muted small">시스템 설정을 고르면 폰의 라이트·다크 모드를 따라가요. 운동 화면은 항상 어두운 화면이에요.</p>
+      </div>
+      <div class="set-sec">
         <h3>Player</h3>
         <label class="switch"><span>음성으로 횟수 세기</span><input type="checkbox" id="voice" ${p.voice ? 'checked' : ''}></label>
         <div class="row-between"><span class="muted small">기본 재생 방식 · ${p.mode === 'tap' ? '내 속도 맞춤' : '자동 재생'}</span>
@@ -774,6 +779,11 @@ function settings() {
       .then((y) => { if (y) { resetAll(); go('setup'); } });
   });
   app.querySelector('#voice').addEventListener('change', (e) => { p.voice = e.target.checked; save(); });
+  app.querySelector('#theme').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    p.theme = b.dataset.v; save(); applyTheme();
+    app.querySelectorAll('#theme button').forEach((x) => x.classList.toggle('on', x === b));
+  });
 
   // 배경음악
   const m = p.music;
@@ -857,6 +867,18 @@ function bindInstall() {
 
 // 하단 탭 아이콘
 nav.querySelectorAll('[data-go]').forEach((b) => b.insertAdjacentHTML('afterbegin', icon({ home: 'today', calendar: 'calendar', rewards: 'gift', stats: 'stats', settings: 'settings' }[b.dataset.go])));
+
+// ---------- 테마 (시스템 / 라이트 / 다크) ----------
+const darkQuery = matchMedia('(prefers-color-scheme: dark)');
+function applyTheme() {
+  const t = db().prefs.theme || 'system';
+  if (t === 'system') delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = t;
+  const dark = t === 'dark' || (t === 'system' && darkQuery.matches);
+  document.getElementById('themeColor')?.setAttribute('content', dark ? '#111213' : '#ecedea');
+}
+darkQuery.addEventListener('change', applyTheme);
+applyTheme();
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
 navigator.storage?.persist?.();

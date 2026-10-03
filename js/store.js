@@ -5,7 +5,7 @@ const defaults = () => ({
   challenge: null, // { start, days, level, startWeight, goalWeight, remindAt }
   logs: {},        // 'YYYY-MM-DD' → { done, partial, sec, kcal, reps: {id: n}, condition, memo, at }
   weights: {},     // 'YYYY-MM-DD' → kg
-  prefs: { voice: true, mode: 'tap', tempo: {}, music: { style: 'house', vol: 0.7, sync: true } },
+  prefs: { voice: true, mode: 'tap', theme: 'system', tempo: {}, music: { style: 'house', vol: 0.7, sync: true } },
   rewards: rewardDefaults(),
 });
 
