@@ -9,6 +9,10 @@ export const MEDIA = {
   gluteBridge: { src: 'media/gluteBridge.mp4', poster: 'media/gluteBridge.jpg', reps: 1 },
   mountainClimber: { src: 'media/mountainClimber.mp4', poster: 'media/mountainClimber.jpg', reps: 1 },
   highKnees: { src: 'media/highKnees.mp4', poster: 'media/highKnees.jpg', reps: 1 },
+  crunch: { src: 'media/crunch.mp4', poster: 'media/crunch.jpg', reps: 1 },
+  legRaise: { src: 'media/legRaise.mp4', poster: 'media/legRaise.jpg', reps: 1 },
+  kneePushup: { src: 'media/kneePushup.mp4', poster: 'media/kneePushup.jpg', reps: 1 },
+  burpee: { src: 'media/burpee.mp4', poster: 'media/burpee.jpg', reps: 1 },
 };
 
 // 영상 재생을 아바타와 같은 방식(phase 0~1, 속도)으로 맞춘다

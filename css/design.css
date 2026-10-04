@@ -195,3 +195,10 @@ input:focus, textarea:focus { background: var(--panel); border-color: var(--ink)
 /* 숫자 카운트업용 span은 큰 숫자 크기를 그대로 따른다 (설명 글씨 규칙과 구분) */
 .stat-grid b span { font-size: inherit; color: inherit; font-weight: inherit; }
 .earn span[data-count] { font-size: inherit; color: inherit; }
+
+/* 실사 영상: 원본 비율 그대로 화면 가운데에 둥근 카드로 보여 준다 (양옆 잘림·위아래 여백 없음) */
+.p-stage:has(video:not(.hidden)) { background: transparent; display: grid; place-items: center; }
+.p-stage video:not(.hidden) {
+  position: static; width: auto; height: auto; max-width: 100%; max-height: 100%;
+  border-radius: 18px; object-fit: contain; box-shadow: 0 10px 30px -12px #000a;
+}

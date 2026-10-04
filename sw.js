@@ -1,6 +1,6 @@
 // 오프라인에서도 동작하도록 앱 파일을 캐시한다. 파일을 바꾸면 VERSION을 올린다.
-const VERSION = 'v13';
-const MEDIA_CACHE = 'media-v4'; // 같은 이름의 영상 파일을 바꾸면 이 값도 올린다
+const VERSION = 'v14';
+const MEDIA_CACHE = 'media-v5'; // 같은 이름의 영상 파일을 바꾸면 이 값도 올린다
 const FILES = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css', 'css/rewards.css', 'css/design.css',
   'js/app.js', 'js/audio.js', 'js/avatar.js', 'js/icons.js', 'js/idb.js', 'js/media.js', 'js/music.js', 'js/ui.js',
