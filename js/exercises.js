@@ -14,8 +14,8 @@ export const EXERCISES = {
     ],
   },
   lunge: {
-    name: '제자리 런지', view: 'side', type: 'reps', base: 2.8, met: 5,
-    tips: ['다리를 앞뒤로 벌리고 상체는 곧게', '뒷무릎이 바닥에 닿기 직전까지', '세트마다 앞다리를 바꿔요'],
+    name: '제자리 런지', view: 'side', type: 'reps', base: 2.8, met: 5, sides: true, unit: '절반에서 다리 바꾸기',
+    tips: ['다리를 앞뒤로 벌리고 상체는 곧게', '뒷무릎이 바닥에 닿기 직전까지', '절반을 하면 앞뒤 다리를 바꿔요'],
     frames: [
       [0, { hip: [-2, 84], torso: 180, armN: { t: [4, 88], bend: -1 }, armF: { t: [0, 88], bend: -1 },
         legN: { t: [28, 6], bend: 1 }, legF: { t: [-32, 10], bend: 1 }, footF: 53 }],

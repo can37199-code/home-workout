@@ -5,7 +5,7 @@ import { Avatar } from './avatar.js';
 import { VideoStage, repSec } from './media.js';
 import { db, save, latestWeight } from './store.js';
 import { kcalFor } from './plan.js';
-import { getAudioCtx } from './audio.js';
+import { getAudioCtx, startPlaybackMode, stopPlaybackMode } from './audio.js';
 import { music, STYLES } from './music.js';
 import { ask } from './ui.js';
 import { loadBlob } from './idb.js';
@@ -32,6 +32,7 @@ const amountText = (ex, it) => (ex.type === 'hold' ? `${it.target}초` : `${it.t
 export function runWorkout(root, { plan, onFinish, onExit, open = false, best = 0, bonus = '' }) {
   const prefs = db().prefs;
   setVoiceEnabled(prefs.voice);
+  startPlaybackMode(); // 무음 스위치를 켜도 소리가 나게 (시작 버튼을 누른 순간에 실행돼야 함)
 
   // 단계: 동작 소개 → 세트 → 휴식 → …
   const steps = [];
@@ -49,7 +50,7 @@ export function runWorkout(root, { plan, onFinish, onExit, open = false, best = 
 
   // 이번 운동에 쓸 음성을 미리 받아 둔다
   const ids = [...new Set(plan.items.map((it) => it.id))];
-  preloadVoice(['start', 'set-2', 'set-3', 'set-last', 'rest-same', 'half', 'last-3', 'done',
+  preloadVoice(['start', 'set-2', 'set-3', 'set-last', 'rest-same', 'half', 'last-3', 'done', 'switch-legs',
     ...ids.flatMap((id) => [`intro-${id}`, `next-${id}`]),
     ...Array.from({ length: 30 }, (_, k) => `count-${k + 1}`)]);
 
@@ -123,7 +124,7 @@ export function runWorkout(root, { plan, onFinish, onExit, open = false, best = 
     } else {
       box.innerHTML = `
         <div class="p-count"><span id="pBig">0</span><small id="pSmall"></small></div>
-        <p class="p-sub">${ex.tips[0]}</p>`;
+        <p class="p-sub">${ex.sides && !open ? `${switchAt(step.item.target)}회 하고 다리를 바꿔요` : ex.tips[0]}</p>`;
     }
   }
 
@@ -136,6 +137,7 @@ export function runWorkout(root, { plan, onFinish, onExit, open = false, best = 
     $('pVideo').classList.toggle('hidden', !useVideo);
     $('pCanvas').classList.toggle('hidden', useVideo);
     phase = 0; count = 0; lastSpoken = -1;
+    setMirror(false);
     const doneWork = steps.slice(0, i).filter((s) => s.kind === 'work').length;
     $('pBar').innerHTML = Array.from({ length: workTotal }, (_, k) => `<i class="${k < doneWork ? 'on' : k === doneWork && step.kind === 'work' ? 'cur' : ''}"></i>`).join('');
     $('pName').textContent = ex.name;
@@ -155,6 +157,7 @@ export function runWorkout(root, { plan, onFinish, onExit, open = false, best = 
       $('pBadge').textContent = '';
       timeLeft = open ? 0 : ex.type === 'hold' ? step.item.target : 0;
       video.restart();
+      setMirror(false);
       say(step.set === 1 || open ? 'start' : step.set === step.item.sets ? 'set-last' : `set-${step.set}`);
     } else {
       timeLeft = plan.rest;
@@ -195,6 +198,10 @@ export function runWorkout(root, { plan, onFinish, onExit, open = false, best = 
     }
   }
 
+  // 한쪽 다리로 하는 동작(sides): 세트 절반에서 영상을 좌우 반전해 반대쪽 다리로 이어 간다
+  function setMirror(on) { root.querySelector('.p-stage').classList.toggle('mirror', on); }
+  const switchAt = (t) => Math.ceil(t / 2);
+
   function leaving() {
     if (open || step?.kind !== 'work') return;
     if (ex.type === 'reps' ? count < step.item.target : timeLeft > 2) skipped++;
@@ -204,8 +211,9 @@ export function runWorkout(root, { plan, onFinish, onExit, open = false, best = 
     count++;
     reps[ex.id] = (reps[ex.id] || 0) + 1;
     const t = step.item.target;
-    if (!open && t >= 8 && count === t - 3) say('last-3');
-    else if (!open && t >= 10 && count === Math.ceil(t / 2)) say('half');
+    if (ex.sides && !open && count === switchAt(t) && count < t) { setMirror(true); say('switch-legs'); }
+    else if (!open && t >= 8 && count === t - 3) say('last-3');
+    else if (!open && t >= 10 && !ex.sides && count === Math.ceil(t / 2)) say('half');
     else say(`count-${Math.min(count, 60)}`);
     renderCount();
     if (count >= t) {
@@ -268,6 +276,7 @@ export function runWorkout(root, { plan, onFinish, onExit, open = false, best = 
     document.removeEventListener('visibilitychange', onVis);
     wakeLock?.release?.().catch(() => {});
     music.stop();
+    stopPlaybackMode();
   }
 
   function finish() {

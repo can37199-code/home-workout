@@ -241,3 +241,7 @@ input:focus, textarea:focus { background: var(--panel); border-color: var(--ink)
 
 .p-info .p-count { margin-top: 2px; }
 .p-info .p-sub { margin: 6px 0 0; text-align: center; font-size: 14px; color: #8d9294; }
+
+/* 한쪽 다리 동작: 세트 절반에서 좌우 반전 (부드럽게 뒤집힘) */
+.p-stage video, .p-stage canvas { transition: transform .45s cubic-bezier(.2, .8, .2, 1); }
+.p-stage.mirror video, .p-stage.mirror canvas { transform: scaleX(-1); }

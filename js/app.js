@@ -6,6 +6,7 @@ import { runWorkout } from './player.js';
 import { ask, notify } from './ui.js';
 import { music, STYLES } from './music.js';
 import { saveBlob, loadBlob } from './idb.js';
+import { startPlaybackMode, stopPlaybackMode } from './audio.js';
 import { icon } from './icons.js';
 import * as RW from './rewards.js';
 import { PUSH_HOUR, pushSupported, currentSubscription, enablePush, disablePush, showNow } from './push.js';
@@ -781,7 +782,7 @@ function settings() {
       <div class="block set">
         <div class="block-head"><h2>${icon('play')}운동 플레이어</h2></div>
         <label class="switch"><span>음성으로 횟수 세기</span><input type="checkbox" id="voice" ${p.voice ? 'checked' : ''}></label>
-        <p class="muted small">영상은 항상 기본 속도로 재생되고, 한 번 동작이 끝날 때마다 자동으로 횟수를 세요.</p>
+        <p class="muted small">영상은 항상 기본 속도로 재생되고, 한 번 동작이 끝날 때마다 자동으로 횟수를 세요. 운동 중에는 아이폰 무음 스위치를 켜 둬도 음성과 음악이 나와요.</p>
       </div>
       <div class="block set">
         <div class="block-head"><h2>${icon('music')}배경음악</h2></div>
@@ -861,7 +862,8 @@ function settings() {
   let previewing = false;
   const previewBtn = app.querySelector('[data-act="preview"]');
   const preview = async (force) => {
-    if (previewing && !force) { music.stop(); previewing = false; previewBtn.textContent = '미리 듣기'; return; }
+    if (previewing && !force) { music.stop(); stopPlaybackMode(); previewing = false; previewBtn.textContent = '미리 듣기'; return; }
+    startPlaybackMode();
     await music.start(m.style, m.vol);
     previewing = m.style !== 'off'; previewBtn.textContent = previewing ? '멈추기' : '미리 듣기';
   };

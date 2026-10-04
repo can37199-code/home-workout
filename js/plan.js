@@ -32,6 +32,7 @@ export function dayPlan(challenge, index) {
     const ex = EXERCISES[id];
     let n = BASE[id] * lv.mult * grow * (key === 'R' ? 0.8 : 1);
     n = ex.type === 'hold' ? Math.round(n / 5) * 5 : Math.max(3, Math.round(n));
+    if (ex.sides && n % 2) n++; // 좌우 똑같이 하도록 짝수로
     return { id, sets: key === 'R' ? 1 : lv.sets, target: n };
   });
   return { key, title: tpl.title, tag: tpl.tag, rest: lv.rest, items };
