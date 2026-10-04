@@ -250,7 +250,7 @@ function home() {
     <div class="plan-title">
       <span><span class="tag">${plan.tag}</span></span>
       <h2>${plan.title}</h2>
-      <div class="plan-meta"><span>${plan.items.length}개 동작</span><span class="dot"></span><span>약 ${minText(estimateSec(plan, db().prefs.tempo))}</span></div>
+      <div class="plan-meta"><span>${plan.items.length}개 동작</span><span class="dot"></span><span>약 ${minText(estimateSec(plan))}</span></div>
       ${log?.done
         ? `<p class="done-line">${icon('check')} 오늘 운동을 마쳤어요 · ${minText(log.sec)} · ${log.kcal}kcal</p>
            <button class="btn ghost big" data-act="start" data-date="${t}"><span>한 번 더 하기</span>${icon('arrow')}</button>`
@@ -781,14 +781,12 @@ function settings() {
       <div class="block set">
         <div class="block-head"><h2>${icon('play')}운동 플레이어</h2></div>
         <label class="switch"><span>음성으로 횟수 세기</span><input type="checkbox" id="voice" ${p.voice ? 'checked' : ''}></label>
-        <div class="row-between"><span class="muted small">기본 재생 방식 · ${p.mode === 'tap' ? '내 속도 맞춤' : '자동 재생'}</span>
-          <button class="btn ghost small" data-act="tempo">학습한 속도 초기화</button></div>
+        <p class="muted small">영상은 항상 기본 속도로 재생되고, 한 번 동작이 끝날 때마다 자동으로 횟수를 세요.</p>
       </div>
       <div class="block set">
         <div class="block-head"><h2>${icon('music')}배경음악</h2></div>
         <div class="chips" id="mStyle">${Object.entries(STYLES).map(([k, v]) => `<button type="button" data-v="${k}" class="${p.music.style === k ? 'on' : ''}">${v.label}</button>`).join('')}</div>
         <label class="range">볼륨 <input type="range" min="0.1" max="1" step="0.05" value="${p.music.vol}" id="mVol"></label>
-        <label class="switch"><span>박자를 내 운동 속도에 맞추기</span><input type="checkbox" id="mSync" ${p.music.sync ? 'checked' : ''}></label>
         <div class="row"><button class="btn ghost" data-act="preview">미리 듣기</button>
           <label class="btn ghost">내 음악 파일<input type="file" accept="audio/*" id="mFile" hidden></label></div>
         <p class="muted small" id="mFileInfo">기본 음악은 앱이 직접 연주하는 비트라 인터넷 없이도 나와요.</p>
@@ -846,7 +844,6 @@ function settings() {
     await disablePush(); refreshPush();
   });
   on('ics', () => download(`ohometeu-${c.start}.ics`, icsFile(c), 'text/calendar'));
-  on('tempo', () => { p.tempo = {}; save(); notify('동작별 속도를 기본값으로 되돌렸어요.'); });
   on('export', () => download(`ohometeu-backup-${today()}.json`, JSON.stringify(db(), null, 1), 'application/json'));
   on('reset', () => {
     ask('모든 기록 지우기', '정말 모든 기록과 설정을 지울까요? 되돌릴 수 없어요. 먼저 백업 파일을 저장해 두는 걸 권해요.', '모두 지우기', { danger: true })
@@ -876,7 +873,6 @@ function settings() {
     if (previewing || m.style !== 'off') preview(true);
   });
   app.querySelector('#mVol').addEventListener('input', (e) => { m.vol = Number(e.target.value); save(); music.vol = m.vol; music.setSoft(false); });
-  app.querySelector('#mSync').addEventListener('change', (e) => { m.sync = e.target.checked; save(); });
   const info = app.querySelector('#mFileInfo');
   loadBlob('myMusic').then((b) => { if (b) info.textContent = `내 음악: ${b.name || '저장된 파일'} (${(b.size / 1048576).toFixed(1)}MB)`; }).catch(() => {});
   app.querySelector('#mFile').addEventListener('change', async (e) => {

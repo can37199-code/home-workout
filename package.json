@@ -1,0 +1,12 @@
+{
+  "name": "home-workout",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "voice": "node tools/make-voice.mjs",
+    "serve": "node tools/serve.mjs"
+  },
+  "devDependencies": {
+    "msedge-tts": "2.0.9"
+  }
+}

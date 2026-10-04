@@ -1,21 +1,25 @@
 // 실사 영상: 동작 id → 1회 동작이 끊김 없이 반복되는 클립 (원본은 videos/, 다듬은 결과는 media/)
-// reps: 클립 안에 들어 있는 동작 횟수. 영상이 없는 동작은 아바타가 대신 보여 준다.
+// dur: 클립 길이(초), reps: 클립 안의 동작 횟수. 영상은 항상 1배속으로 재생하고, 클립이 한 바퀴 돌 때 횟수를 센다.
 export const MEDIA = {
-  squat: { src: 'media/squat.mp4', poster: 'media/squat.jpg', reps: 1 },
-  lunge: { src: 'media/lunge.mp4', poster: 'media/lunge.jpg', reps: 1 },
-  pushup: { src: 'media/pushup.mp4', poster: 'media/pushup.jpg', reps: 1 },
-  plank: { src: 'media/plank.mp4', poster: 'media/plank.jpg', reps: 1 },
-  jumpingJack: { src: 'media/jumpingJack.mp4', poster: 'media/jumpingJack.jpg', reps: 1 },
-  gluteBridge: { src: 'media/gluteBridge.mp4', poster: 'media/gluteBridge.jpg', reps: 1 },
-  mountainClimber: { src: 'media/mountainClimber.mp4', poster: 'media/mountainClimber.jpg', reps: 1 },
-  highKnees: { src: 'media/highKnees.mp4', poster: 'media/highKnees.jpg', reps: 1 },
-  crunch: { src: 'media/crunch.mp4', poster: 'media/crunch.jpg', reps: 1 },
-  legRaise: { src: 'media/legRaise.mp4', poster: 'media/legRaise.jpg', reps: 1 },
-  kneePushup: { src: 'media/kneePushup.mp4', poster: 'media/kneePushup.jpg', reps: 1 },
-  burpee: { src: 'media/burpee.mp4', poster: 'media/burpee.jpg', reps: 1 },
+  squat: { dur: 3.667, reps: 1 },
+  lunge: { dur: 4.75, reps: 1 },
+  pushup: { dur: 3.083, reps: 1 },
+  kneePushup: { dur: 3.917, reps: 1 },
+  plank: { dur: 1.667, reps: 1 },
+  jumpingJack: { dur: 3.417, reps: 1 },
+  gluteBridge: { dur: 3.25, reps: 1 },
+  mountainClimber: { dur: 1.458, reps: 1 },
+  highKnees: { dur: 0.792, reps: 1 },
+  crunch: { dur: 3.083, reps: 1 },
+  legRaise: { dur: 2.583, reps: 1 },
+  burpee: { dur: 7.708, reps: 1 },
 };
+for (const [id, m] of Object.entries(MEDIA)) { m.src = `media/${id}.mp4`; m.poster = `media/${id}.jpg`; }
 
-// 영상 재생을 아바타와 같은 방식(phase 0~1, 속도)으로 맞춘다
+// 1회 동작 시간: 영상이 있으면 영상 그대로(1배속), 없으면 아바타 기본값
+export const repSec = (ex) => (MEDIA[ex.id] ? MEDIA[ex.id].dur / MEDIA[ex.id].reps : ex.base);
+
+// 영상은 1배속으로 반복 재생만 하고, 지금 몇 번째 동작의 어디쯤인지(phase)를 알려 준다
 export class VideoStage {
   constructor(video) {
     this.v = video;
@@ -27,31 +31,18 @@ export class VideoStage {
     this.m = MEDIA[id] || null;
     this.ready = false;
     if (!this.m) { this.v.pause(); this.v.removeAttribute('src'); this.v.load(); return false; }
-    this.v.poster = this.m.poster || '';
+    this.v.poster = this.m.poster;
     this.v.src = this.m.src;
+    this.v.playbackRate = 1;
     return true;
   }
-  // phase: 0~1 (1회 동작 안의 위치), vel: 초당 phase 변화량, hold: 정지 화면
-  draw(phase, vel, hold) {
-    const v = this.v;
-    if (!this.m || !this.ready || !v.duration) return;
-    const L = v.duration / this.m.reps;
-    if (hold || vel <= 0) {
-      if (!v.paused) v.pause();
-      // 시작 자세에서 기다린다 (클립 끝 프레임은 시작 프레임과 거의 같아서 그대로 둬도 된다)
-      if (v.currentTime > 0.05 && v.currentTime < L - 0.15) v.currentTime = 0;
-      return;
-    }
-    const target = ((phase % 1) + 1) % 1 * L;
-    let diff = v.currentTime - target;
-    if (diff > L / 2) diff -= L; else if (diff < -L / 2) diff += L;
-    // 위치를 강제로 옮기면(seek) 화면이 멈칫하므로, 많이 어긋났을 때만 옮기고
-    // 평소에는 재생 속도를 살짝 빠르게/느리게 해서 따라잡는다
-    if (Math.abs(diff) > L * 0.3) { v.currentTime = target; diff = 0; }
-    const correction = Math.max(-0.35, Math.min(0.35, -diff / L * 1.5));
-    const rate = Math.max(0.25, Math.min(4, L * vel * (1 + correction)));
-    if (Math.abs(v.playbackRate - rate) > 0.01) v.playbackRate = rate;
-    if (v.paused) v.play().catch(() => {});
+  // 동작 안의 위치 0~1 (영상이 아직 준비 안 됐으면 null)
+  phase() {
+    if (!this.m || !this.ready || !this.v.duration) return null;
+    const L = this.v.duration / this.m.reps;
+    return (this.v.currentTime % L) / L;
   }
-  stop() { this.v.pause(); }
+  play() { if (this.m && this.v.paused) this.v.play().catch(() => {}); }
+  pause() { if (!this.v.paused) this.v.pause(); }
+  restart() { if (this.m) { this.v.currentTime = 0; } }
 }

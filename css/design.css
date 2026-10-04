@@ -202,3 +202,42 @@ input:focus, textarea:focus { background: var(--panel); border-color: var(--ink)
   position: static; width: auto; height: auto; max-width: 100%; max-height: 100%;
   border-radius: 18px; object-fit: contain; box-shadow: 0 10px 30px -12px #000a;
 }
+
+/* ---------- 운동 화면: 자세 포인트 카드 · 휴식 카드 ---------- */
+.p-reward { display: inline-flex; align-items: center; gap: 6px; }
+.p-reward .ico { width: 15px; height: 15px; }
+.p-info { min-height: 132px; display: flex; flex-direction: column; justify-content: center; }
+.p-guide {
+  background: #181b1d; border: 1px solid #2a2e31; border-radius: 22px; padding: 16px 16px 14px;
+  display: flex; flex-direction: column; gap: 12px; animation: rise .45s cubic-bezier(.2, .8, .2, 1) both;
+}
+.g-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.g-kicker { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; letter-spacing: .12em; color: #f06a55; }
+.g-kicker .ico { width: 16px; height: 16px; stroke-width: 2.2; }
+.g-target { font-size: 13px; font-weight: 700; color: #f2f2ef; background: #26292c; border-radius: 999px; padding: 4px 10px; white-space: nowrap; }
+.g-tips { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+.g-tips li {
+  display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: center; font-size: 16px; font-weight: 600; color: #f2f2ef; line-height: 1.35;
+  animation: rise .5s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i) * 140ms + 150ms);
+}
+.g-n { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 800; color: #0e0f10; background: #f06a55; }
+.g-tips li:nth-child(2) .g-n { background: #f4a261; }
+.g-tips li:nth-child(3) .g-n { background: #6cc3c4; }
+.g-bar { height: 4px; border-radius: 4px; background: #2a2e31; overflow: hidden; }
+.g-bar i { display: block; height: 100%; background: linear-gradient(90deg, #f06a55, #f4a261); transform-origin: left; transform: scaleX(0); transition: transform .2s linear; }
+.g-foot { margin: 0; font-size: 12px; color: #8d9294; text-align: right; }
+
+.p-rest {
+  display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: center;
+  background: #181b1d; border: 1px solid #2a2e31; border-radius: 22px; padding: 16px; animation: rise .45s cubic-bezier(.2, .8, .2, 1) both;
+}
+.r-time { display: flex; flex-direction: column; align-items: flex-start; line-height: .9; }
+.r-time span { font-size: 56px; font-weight: 800; letter-spacing: -0.05em; color: #6cc3c4; font-variant-numeric: tabular-nums; }
+.r-time small { font-size: 12px; font-weight: 700; color: #8d9294; margin-top: 6px; letter-spacing: .08em; }
+.r-next { display: flex; flex-direction: column; gap: 3px; padding-left: 14px; border-left: 1px solid #2a2e31; min-width: 0; }
+.r-next .g-kicker { color: #8d9294; }
+.r-next b { font-size: 20px; font-weight: 800; color: #f2f2ef; }
+.r-next span:last-child { font-size: 13px; color: #8d9294; }
+
+.p-info .p-count { margin-top: 2px; }
+.p-info .p-sub { margin: 6px 0 0; text-align: center; font-size: 14px; color: #8d9294; }

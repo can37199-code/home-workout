@@ -1,5 +1,6 @@
 // 날짜별 루틴 생성: A 하체 → B 상체·코어 → C 전신 유산소 → (반복) → 7일째 가벼운 회복 데이
 import { EXERCISES } from './exercises.js';
+import { repSec } from './media.js';
 
 export const LEVELS = {
   easy: { label: '입문', sets: 2, mult: 0.7, rest: 40 },
@@ -36,11 +37,11 @@ export function dayPlan(challenge, index) {
   return { key, title: tpl.title, tag: tpl.tag, rest: lv.rest, items };
 }
 
-export function estimateSec(plan, tempo = {}) {
+export function estimateSec(plan) {
   let s = 0, sets = 0;
   for (const it of plan.items) {
     const ex = EXERCISES[it.id];
-    const per = ex.type === 'hold' ? it.target : it.target * ex.base / (tempo[it.id] || 1);
+    const per = ex.type === 'hold' ? it.target : it.target * repSec(ex);
     s += per * it.sets + 8; sets += it.sets;
   }
   return s + (sets - 1) * plan.rest;
