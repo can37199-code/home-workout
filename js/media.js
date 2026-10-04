@@ -2,17 +2,17 @@
 // dur: 클립 길이(초), reps: 클립 안의 동작 횟수. 영상은 항상 1배속으로 재생하고, 클립이 한 바퀴 돌 때 횟수를 센다.
 export const MEDIA = {
   squat: { dur: 3.667, reps: 1 },
-  lunge: { dur: 4.75, reps: 1 },
+  lunge: { dur: 3.708, reps: 1 },
   pushup: { dur: 3.083, reps: 1 },
-  kneePushup: { dur: 3.917, reps: 1 },
+  kneePushup: { dur: 1.667, reps: 1 },
   plank: { dur: 1.667, reps: 1 },
-  jumpingJack: { dur: 3.417, reps: 1 },
+  jumpingJack: { dur: 1.583, reps: 1 },
   gluteBridge: { dur: 3.25, reps: 1 },
   mountainClimber: { dur: 1.458, reps: 1 },
   highKnees: { dur: 0.792, reps: 1 },
   crunch: { dur: 3.083, reps: 1 },
   legRaise: { dur: 2.583, reps: 1 },
-  burpee: { dur: 7.708, reps: 1 },
+  burpee: { dur: 9.25, reps: 2 },
 };
 for (const [id, m] of Object.entries(MEDIA)) { m.src = `media/${id}.mp4`; m.poster = `media/${id}.jpg`; }
 
