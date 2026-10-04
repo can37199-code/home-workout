@@ -1,4 +1,4 @@
-// 음성 안내 문장 목록. tools/make-voice.mjs가 이 목록으로 media/voice/<key>.mp3를 만든다 (Edge 신경망 음성 ko-KR-SunHiNeural).
+// 음성 안내 문장 목록. tools/make-voice.mjs가 이 목록으로 media/voice/<key>.mp3를 만든다 (Azure Speech 신경망 음성 ko-KR-SunHiNeural).
 // 문장을 바꾸면 make-voice를 다시 돌리고 sw.js의 MEDIA_CACHE를 올린다.
 const NATIVE = ['', '하나', '둘', '셋', '넷', '다섯', '여섯', '일곱', '여덟', '아홉'];
 const TENS = ['', '열', '스물', '서른', '마흔', '쉰', '예순', '일흔', '여든'];

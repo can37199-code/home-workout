@@ -899,6 +899,16 @@ function settings() {
         <ul class="ex-list">${Object.values(EXERCISES).map((ex) => `<li>${thumb(ex.id)}<div><b>${ex.name}</b><span class="sub">${ex.tips[0]}</span></div><span></span></li>`).join('')}</ul>
       </div>
       <div class="block set">
+        <div class="block-head"><h2>${icon('sparkle')}앱 정보</h2></div>
+        <ul class="credits">
+          <li><b>AI 코치 영상</b><span class="muted small">운동 영상 속 인물은 실제 사람이 아니라 생성형 AI(Google Gemini·Veo)로 만든 가상 코치예요.</span></li>
+          <li><b>음성 안내</b><span class="muted small">Microsoft 신경망 음성(SunHi)으로 합성했어요.</span></li>
+          <li><b>배경음악</b><span class="muted small">앱이 직접 연주하는 신스 음악이에요.</span></li>
+          <li><b>글꼴</b><span class="muted small">Pretendard (SIL Open Font License 1.1), Apple SD Gothic Neo</span></li>
+          <li><b>안전 안내</b><span class="muted small">이 앱은 의료 조언을 대신하지 않아요. 지병·부상·임신 중이거나 운동 중 통증·어지러움이 있으면 멈추고 전문가와 상담하세요.</span></li>
+        </ul>
+      </div>
+      <div class="block set">
         <div class="block-head"><h2>${icon('trash')}데이터</h2></div>
         <button class="btn danger" data-act="reset" style="align-self:flex-start;padding-left:0">모든 기록 지우기</button>
         <p class="muted small">오늘홈트 · 데이터는 서버로 전송되지 않아요</p>

@@ -252,3 +252,10 @@ input:focus, textarea:focus { background: var(--panel); border-color: var(--ink)
 .adapt-chip.up { background: var(--coral-soft); color: var(--coral); }
 .adapt-note { font-size: 13px; color: var(--muted); margin: -2px 0 0; }
 .off-bar { height: 6px; }
+
+/* AI 생성물 표시 (AI 기본법): 실사 영상이 보일 때만 */
+.p-ai { position: absolute; right: 10px; bottom: 10px; font-size: 10.5px; font-weight: 600; letter-spacing: .02em; padding: 3px 8px; border-radius: 999px; background: #0e0f10b3; color: #ffffffd9; pointer-events: none; }
+.p-stage:has(video.hidden) .p-ai { display: none; }
+.credits { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.credits li { display: flex; flex-direction: column; gap: 2px; }
+.credits b { font-size: 14px; }

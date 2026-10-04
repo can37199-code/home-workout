@@ -67,7 +67,7 @@ export function runWorkout(root, { plan, onFinish, onExit, open = false, best = 
     </header>
     <div class="p-bar" id="pBar"></div>
     ${bonus ? `<div class="p-reward">${icon('coin')}${bonus}</div>` : ''}
-    <div class="p-stage"><canvas id="pCanvas"></canvas><video id="pVideo" class="hidden"></video><div class="p-badge" id="pBadge"></div></div>
+    <div class="p-stage"><canvas id="pCanvas"></canvas><video id="pVideo" class="hidden"></video><div class="p-badge" id="pBadge"></div><span class="p-ai">AI 생성 영상</span></div>
     <div class="p-info" id="pInfo"></div>
     <div class="p-actions" id="pActions"></div>
     <div class="p-pause hidden" id="pPause">
