@@ -245,3 +245,10 @@ input:focus, textarea:focus { background: var(--panel); border-color: var(--ink)
 /* 한쪽 다리 동작: 세트 절반에서 좌우 반전 (부드럽게 뒤집힘) */
 .p-stage video, .p-stage canvas { transition: transform .45s cubic-bezier(.2, .8, .2, 1); }
 .p-stage.mirror video, .p-stage.mirror canvas { transform: scaleX(-1); }
+
+/* 운동량 자동 조절 표시 */
+.adapt-chip { font-size: 12px; font-weight: 800; padding: 2px 8px; border-radius: 999px; }
+.adapt-chip.down { background: var(--teal-soft); color: var(--teal); }
+.adapt-chip.up { background: var(--coral-soft); color: var(--coral); }
+.adapt-note { font-size: 13px; color: var(--muted); margin: -2px 0 0; }
+.off-bar { height: 6px; }

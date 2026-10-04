@@ -1,8 +1,9 @@
 // 음성 안내 문장 목록. tools/make-voice.mjs가 이 목록으로 media/voice/<key>.mp3를 만든다 (Edge 신경망 음성 ko-KR-SunHiNeural).
 // 문장을 바꾸면 make-voice를 다시 돌리고 sw.js의 MEDIA_CACHE를 올린다.
 const NATIVE = ['', '하나', '둘', '셋', '넷', '다섯', '여섯', '일곱', '여덟', '아홉'];
-const TENS = ['', '열', '스물', '서른', '마흔', '쉰'];
-export const korCount = (n) => (n >= 60 ? '예순' : TENS[Math.floor(n / 10)] + NATIVE[n % 10]);
+const TENS = ['', '열', '스물', '서른', '마흔', '쉰', '예순', '일흔', '여든'];
+export const MAX_COUNT = 80;
+export const korCount = (n) => TENS[Math.floor(n / 10)] + NATIVE[n % 10];
 
 // 동작 소개 (화면의 자세 포인트와 같은 내용을 말로 풀어서)
 export const INTRO = {
@@ -26,7 +27,7 @@ const NAMES = {
 };
 
 export const LINES = {};
-for (let n = 1; n <= 60; n++) LINES[`count-${n}`] = korCount(n);
+for (let n = 1; n <= MAX_COUNT; n++) LINES[`count-${n}`] = korCount(n);
 for (const [id, t] of Object.entries(INTRO)) LINES[`intro-${id}`] = t;
 for (const [id, name] of Object.entries(NAMES)) LINES[`next-${id}`] = `좋아요. 잠깐 쉬어요. 다음은 ${name}입니다.`;
 LINES['rest-same'] = '좋아요. 잠깐 숨 고르고, 다음 세트 갑니다.';

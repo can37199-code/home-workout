@@ -11,6 +11,8 @@ import { ask } from './ui.js';
 import { loadBlob } from './idb.js';
 import { icon } from './icons.js';
 import { say, preloadVoice, voiceLength, stopVoice, setVoiceEnabled } from './voice.js';
+import { MAX_COUNT } from './voice-lines.js';
+import { MEDIA } from './media.js';
 
 const hasMyMusic = () => loadBlob('myMusic').then(Boolean).catch(() => false);
 
@@ -52,7 +54,9 @@ export function runWorkout(root, { plan, onFinish, onExit, open = false, best = 
   const ids = [...new Set(plan.items.map((it) => it.id))];
   preloadVoice(['start', 'set-2', 'set-3', 'set-last', 'rest-same', 'half', 'last-3', 'done', 'switch-legs',
     ...ids.flatMap((id) => [`intro-${id}`, `next-${id}`]),
-    ...Array.from({ length: 30 }, (_, k) => `count-${k + 1}`)]);
+    ...Array.from({ length: Math.min(MAX_COUNT, Math.max(...plan.items.map((it) => (Number.isFinite(it.target) ? it.target : 30)))) }, (_, k) => `count-${k + 1}`)]);
+  // 이번 운동 영상도 미리 받아 둔다 (서비스 워커가 저장해서 다음부터는 오프라인으로도 재생)
+  ids.forEach((id) => { if (MEDIA[id]) fetch(MEDIA[id].src).catch(() => {}); });
 
   root.innerHTML = `
   <div class="player">
@@ -214,7 +218,7 @@ export function runWorkout(root, { plan, onFinish, onExit, open = false, best = 
     if (ex.sides && !open && count === switchAt(t) && count < t) { setMirror(true); say('switch-legs'); }
     else if (!open && t >= 8 && count === t - 3) say('last-3');
     else if (!open && t >= 10 && !ex.sides && count === Math.ceil(t / 2)) say('half');
-    else say(`count-${Math.min(count, 60)}`);
+    else say(`count-${Math.min(count, MAX_COUNT)}`);
     renderCount();
     if (count >= t) {
       beep(1046, 160);

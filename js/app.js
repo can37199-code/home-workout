@@ -1,7 +1,8 @@
 import { EXERCISES } from './exercises.js';
 import { MEDIA } from './media.js';
 import { Avatar } from './avatar.js';
-import { LEVELS, dayPlan, estimateSec, miniPlan, challengePlan } from './plan.js';
+import { LEVELS, dayPlan, estimateSec, miniPlan, challengePlan, ADAPT_MIN, ADAPT_MAX } from './plan.js';
+import { LINES } from './voice-lines.js';
 import { runWorkout } from './player.js';
 import { ask, notify } from './ui.js';
 import { music, STYLES } from './music.js';
@@ -251,7 +252,8 @@ function home() {
     <div class="plan-title">
       <span><span class="tag">${plan.tag}</span></span>
       <h2>${plan.title}</h2>
-      <div class="plan-meta"><span>${plan.items.length}개 동작</span><span class="dot"></span><span>약 ${minText(estimateSec(plan))}</span></div>
+      <div class="plan-meta"><span>${plan.items.length}개 동작</span><span class="dot"></span><span>약 ${minText(estimateSec(plan))}</span>${plan.adapt !== 1 ? `<span class="dot"></span><span class="adapt-chip ${plan.adapt < 1 ? 'down' : 'up'}">운동량 ${Math.round(plan.adapt * 100)}%</span>` : ''}</div>
+      ${c.adaptNote && diffDays(c.adaptNote.date, t) <= 1 && !log?.done ? `<p class="adapt-note">${ADAPT_REASON[c.adaptNote.reason] || ''} 오늘 운동량을 ${Math.round(Math.abs(c.adaptNote.to - c.adaptNote.from) * 100)}% ${c.adaptNote.to < c.adaptNote.from ? '줄였어요' : '늘렸어요'}.</p>` : ''}
       ${log?.done
         ? `<p class="done-line">${icon('check')} 오늘 운동을 마쳤어요 · ${minText(log.sec)} · ${log.kcal}kcal</p>
            <button class="btn ghost big" data-act="start" data-date="${t}"><span>한 번 더 하기</span>${icon('arrow')}</button>`
@@ -264,6 +266,7 @@ function home() {
     ${photoDay ? `<div class="note"><b>오늘은 몸 사진 찍는 날 · Day ${i + 1}</b><p class="muted">같은 자리, 같은 각도로 찍어 두면 변화 리포트에서 Day 1과 나란히 비교해 줘요.</p>
       <button class="btn ghost" data-go-to="rewards" data-anchor="report">${icon('camera')} 사진 기록하러 가기</button></div>` : ''}
 
+    ${doneCount >= 3 && daysSince(db().prefs.lastBackup) >= 7 ? `<div class="note"><b>${db().prefs.lastBackup ? `백업한 지 ${daysSince(db().prefs.lastBackup)}일 지났어요` : '아직 백업한 적이 없어요'}</b><p class="muted">기록·코인·몸 사진은 이 폰에만 있어요. 파일 앱(iCloud Drive)에 한 번 저장해 두세요.</p><button class="btn ghost" data-act="backup">${icon('download')} 지금 백업하기</button></div>` : ''}
     ${missedY ? `<div class="note"><b>어제 Day ${yi + 1}을 놓쳤어요</b><p class="muted">오늘 안에 보충하면 연속 기록이 이어져요.</p>
       <button class="btn ghost" data-act="start" data-date="${y}">어제 운동 보충하기</button></div>` : ''}
 
@@ -284,6 +287,7 @@ function home() {
   bindInstall();
   bindCommon(home);
   app.querySelectorAll('[data-act="start"]').forEach((b) => b.addEventListener('click', () => go('player', { date: b.dataset.date })));
+  app.querySelector('[data-act="backup"]')?.addEventListener('click', async () => { if (await backupNow()) { toast('백업했어요'); home(); } });
   app.querySelector('[data-act="mini"]')?.addEventListener('click', (e) => go('player', { date: e.currentTarget.dataset.date, mini: true }));
   app.querySelector('[data-act="new"]')?.addEventListener('click', () => { db().challenge = null; save(); go('setup'); });
 }
@@ -307,11 +311,13 @@ function player(arg) {
       saveLog(date, r, true, { full: r.full || !!prev?.full, ontime: RW.onTime(r.startedAt) || !!prev?.ontime, mini: mini && !prev?.done });
       if (mini) { db().rewards.miniDays[date] = true; save(); }
       const award = RW.awardWorkout(date, r, { mini, comeback });
+      if (!r.full && !mini) adjustAdapt(date, 0.95, 'skip');
       go('finish', { date, r, award });
     },
     onExit: (r) => {
       saveLog(date, r, false);
       const award = RW.awardWorkout(date, r);
+      if (r.ratio < 1) adjustAdapt(date, 0.95, 'quit');
       go('home');
       if (award.coins) toast(`부분 완료로 기록했어요 · 코인 +${award.coins}`);
     },
@@ -420,6 +426,8 @@ function finish({ date, r, award }) {
     e.preventDefault();
     const log = db().logs[date];
     log.condition = app.querySelector('#cond .on')?.dataset.v || log.condition || null;
+    if (log.condition === 'hard') adjustAdapt(date, 0.9, 'hard');
+    if (log.condition === 'easy') adjustAdapt(date, 1.1, 'easy');
     log.memo = app.querySelector('#memo').value.trim();
     const w = Number(app.querySelector('#w').value);
     if (w) db().weights[date] = w;
@@ -493,6 +501,82 @@ function calendar(sel) {
   }));
   app.querySelectorAll('[data-d]').forEach((b) => b.addEventListener('click', () => { clearThumbs(); calendar(b.dataset.d); }));
   app.querySelector('[data-start]')?.addEventListener('click', (e) => go('player', { date: e.currentTarget.dataset.start }));
+}
+
+// ---------- 운동량 자동 조절 ----------
+// 컨디션(힘들었어요/가뿐했어요)과 완주 여부로 다음 운동량을 ±5~10% 바꾼다. 하루에 한 번만.
+function adjustAdapt(date, factor, reason) {
+  const c = db().challenge;
+  if (!c || db().prefs.autoAdapt === false) return;
+  c.adaptDone ||= {};
+  if (c.adaptDone[date]?.includes(reason)) return;
+  const from = c.adapt || 1;
+  const to = Math.round(Math.min(ADAPT_MAX, Math.max(ADAPT_MIN, from * factor)) * 100) / 100;
+  (c.adaptDone[date] ||= []).push(reason);
+  if (to === from) return save();
+  c.adapt = to;
+  c.adaptNote = { date, from, to, reason };
+  save();
+}
+const ADAPT_REASON = { hard: '지난 운동이 힘들었다고 해서', easy: '지난 운동이 가뿐했다고 해서', skip: '지난 운동에서 세트를 건너뛰어서', quit: '지난 운동을 중간에 멈춰서' };
+
+// ---------- 백업 (사진 포함) ----------
+const daysSince = (d) => (d ? diffDays(d, today()) : Infinity);
+async function backupNow() {
+  const data = JSON.parse(JSON.stringify(db()));
+  data.photoData = {};
+  for (const d of Object.keys(db().rewards.photos || {})) {
+    const b = await loadBlob('photo:' + d).catch(() => null);
+    if (b) data.photoData[d] = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(b); });
+  }
+  const name = `오늘홈트-백업-${today()}.json`;
+  const file = new File([JSON.stringify(data)], name, { type: 'application/json' });
+  let done = false;
+  // 아이폰: 공유 시트 → "파일에 저장"으로 iCloud Drive에 바로 저장
+  if (navigator.canShare?.({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: '오늘홈트 백업' }); done = true; }
+    catch (e) { if (e.name === 'AbortError') return false; }
+  }
+  if (!done) download(name, await file.text(), 'application/json');
+  db().prefs.lastBackup = today(); save();
+  return true;
+}
+async function restoreFrom(d) {
+  const photos = d.photoData || {};
+  delete d.photoData;
+  replaceAll(d);
+  for (const [date, url] of Object.entries(photos)) {
+    const blob = await (await fetch(url)).blob();
+    await saveBlob('photo:' + date, blob);
+  }
+}
+
+// ---------- 오프라인용으로 모두 받기 ----------
+const OFFLINE_FILES = () => [
+  ...Object.values(MEDIA).flatMap((m) => [m.src, m.poster]),
+  ...Object.keys(LINES).map((k) => `media/voice/${k}.mp3`),
+  'media/silence.mp3',
+];
+async function offlineStatus() {
+  if (!('caches' in window)) return { have: 0, total: OFFLINE_FILES().length };
+  const files = OFFLINE_FILES();
+  let have = 0;
+  for (const u of files) if (await caches.match(new URL(u, location.href).pathname)) have++;
+  return { have, total: files.length };
+}
+async function downloadAll(onProgress) {
+  const files = OFFLINE_FILES();
+  let n = 0, failed = 0;
+  const queue = [...files];
+  const worker = async () => {
+    while (queue.length) {
+      const u = queue.shift();
+      try { const r = await fetch(u); if (!r.ok) failed++; else await r.arrayBuffer(); } catch { failed++; }
+      onProgress(++n, files.length);
+    }
+  };
+  await Promise.all([worker(), worker(), worker(), worker()]);
+  return failed;
 }
 
 // ---------- 공통 버튼 ----------
@@ -793,10 +877,22 @@ function settings() {
         <p class="muted small" id="mFileInfo">기본 음악은 앱이 직접 연주하는 비트라 인터넷 없이도 나와요.</p>
       </div>
       <div class="block set">
-        <div class="block-head"><h2>${icon('download')}백업</h2></div>
-        <p class="muted small">기록은 이 폰 브라우저에만 저장돼요. 폰을 바꾸거나 앱 데이터를 지우기 전에 백업하세요.</p>
-        <div class="row"><button class="btn ghost" data-act="export">백업 파일 저장</button>
+        <div class="block-head"><h2>${icon('download')}백업</h2><span class="muted small">${p.lastBackup ? `마지막 백업 ${daysSince(p.lastBackup) === 0 ? '오늘' : daysSince(p.lastBackup) + '일 전'}` : '아직 없음'}</span></div>
+        <p class="muted small">기록·코인·몸 사진을 파일 하나로 저장해요. 공유 화면에서 "파일에 저장"을 고르면 iCloud Drive에 들어가요. 7일이 지나면 홈에서 알려 드려요.</p>
+        <div class="row"><button class="btn primary" data-act="export">지금 백업하기</button>
           <label class="btn ghost">백업 불러오기<input type="file" accept="application/json" id="imp" hidden></label></div>
+      </div>
+      <div class="block set">
+        <div class="block-head"><h2>${icon('download')}오프라인</h2><span class="muted small" id="offStat">확인 중…</span></div>
+        <p class="muted small">운동 영상과 음성(약 ${Math.round((Object.keys(MEDIA).length * 0.45 + 2.2) * 10) / 10}MB)을 미리 받아 두면 인터넷이 없어도 끊김 없이 운동할 수 있어요. 와이파이에서 받으세요.</p>
+        <div class="bar off-bar hidden" id="offBar"><i style="width:0%"></i></div>
+        <button class="btn ghost" data-act="offline">오프라인용으로 모두 받기</button>
+      </div>
+      <div class="block set">
+        <div class="block-head"><h2>${icon('sparkle')}운동량 자동 조절</h2><span class="muted small">지금 ${Math.round((c.adapt || 1) * 100)}%</span></div>
+        <label class="switch"><span>컨디션과 완주 여부로 다음 운동량 조절</span><input type="checkbox" id="autoAdapt" ${p.autoAdapt === false ? '' : 'checked'}></label>
+        <p class="muted small">"힘들었어요"면 10% 줄이고, "가뿐했어요"면 10% 늘려요. 세트를 건너뛰거나 중간에 멈추면 5% 줄여요. 70~140% 안에서 바뀌어요.</p>
+        ${(c.adapt || 1) !== 1 ? '<button class="btn ghost small" data-act="adapt-reset" style="align-self:flex-start">운동량 100%로 되돌리기</button>' : ''}
       </div>
       <div class="block set">
         <div class="block-head"><h2>${icon('dumbbell')}동작 도감</h2></div>
@@ -845,7 +941,20 @@ function settings() {
     await disablePush(); refreshPush();
   });
   on('ics', () => download(`ohometeu-${c.start}.ics`, icsFile(c), 'text/calendar'));
-  on('export', () => download(`ohometeu-backup-${today()}.json`, JSON.stringify(db(), null, 1), 'application/json'));
+  on('export', async () => { if (await backupNow()) { toast('백업했어요'); settings(); } });
+  app.querySelector('#autoAdapt').addEventListener('change', (e) => { p.autoAdapt = e.target.checked; save(); });
+  app.querySelector('[data-act="adapt-reset"]')?.addEventListener('click', () => { c.adapt = 1; c.adaptNote = null; save(); settings(); });
+  const offStat = app.querySelector('#offStat');
+  const showOff = ({ have, total }) => { offStat.textContent = have >= total ? '모두 받음' : `${have} / ${total}개 받음`; };
+  offlineStatus().then(showOff);
+  on('offline', async (e) => {
+    const btn = e.currentTarget; btn.disabled = true; btn.textContent = '받는 중…';
+    const bar = app.querySelector('#offBar'); bar.classList.remove('hidden');
+    const failed = await downloadAll((n, total) => { bar.firstElementChild.style.width = `${(n / total) * 100}%`; offStat.textContent = `${n} / ${total}개 받음`; });
+    btn.disabled = false; btn.textContent = failed ? '다시 시도' : '다시 받기';
+    showOff(await offlineStatus());
+    toast(failed ? `${failed}개를 받지 못했어요. 인터넷 연결을 확인해 주세요.` : '오프라인 준비 완료');
+  });
   on('reset', () => {
     ask('모든 기록 지우기', '정말 모든 기록과 설정을 지울까요? 되돌릴 수 없어요. 먼저 백업 파일을 저장해 두는 걸 권해요.', '모두 지우기', { danger: true })
       .then((y) => { if (y) { resetAll(); go('setup'); } });
@@ -891,7 +1000,7 @@ function settings() {
     try {
       const d = JSON.parse(await f.text());
       if (!d.logs || !('challenge' in d)) throw new Error();
-      if (await ask('백업 불러오기', '지금 기록을 백업 파일 내용으로 바꿀까요?', '바꾸기')) { replaceAll(d); go('home'); }
+      if (await ask('백업 불러오기', '지금 기록을 백업 파일 내용으로 바꿀까요? 몸 사진도 함께 돌아와요.', '바꾸기')) { await restoreFrom(d); applyTheme(); go('home'); }
     } catch { notify('백업 파일을 읽지 못했어요.'); }
   });
 }

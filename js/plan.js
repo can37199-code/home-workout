@@ -2,17 +2,16 @@
 import { EXERCISES } from './exercises.js';
 import { repSec } from './media.js';
 
+// 세트 길이를 "횟수"가 아니라 "운동 시간"으로 맞춘다. 영상이 1배속이라 동작마다 1회 시간이 달라서,
+// 같은 시간 동안 할 수 있는 횟수를 목표로 준다 (버피처럼 긴 동작은 적게, 하이니처럼 짧은 동작은 많이).
 export const LEVELS = {
-  easy: { label: '입문', sets: 2, mult: 0.7, rest: 40 },
-  normal: { label: '중급', sets: 3, mult: 1, rest: 30 },
-  hard: { label: '상급', sets: 3, mult: 1.4, rest: 25 },
+  easy: { label: '입문', sets: 2, work: 30, rest: 40 },
+  normal: { label: '중급', sets: 3, work: 40, rest: 30 },
+  hard: { label: '상급', sets: 3, work: 50, rest: 25 },
 };
 
-// 기본 횟수(반복) 또는 초(hold)
-const BASE = {
-  squat: 15, lunge: 10, gluteBridge: 15, jumpingJack: 20, pushup: 10, kneePushup: 10,
-  plank: 30, crunch: 15, legRaise: 10, highKnees: 16, mountainClimber: 12, burpee: 6,
-};
+// 운동량 자동 조절 범위 (컨디션·완주 여부로 바뀜)
+export const ADAPT_MIN = 0.7, ADAPT_MAX = 1.4;
 
 const TEMPLATES = {
   A: { title: '하체 집중', tag: 'Lower', items: ['squat', 'lunge', 'gluteBridge', 'jumpingJack'] },
@@ -22,20 +21,26 @@ const TEMPLATES = {
 };
 const CYCLE = ['A', 'B', 'C', 'A', 'B', 'C', 'R'];
 
+// 목표 시간(초) → 그 동작의 목표 횟수(또는 버티기 초)
+export function targetFor(ex, sec) {
+  if (ex.type === 'hold') return Math.max(15, Math.round(sec / 5) * 5);
+  let n = Math.max(3, Math.round(sec / repSec(ex)));
+  if (ex.sides && n % 2) n++; // 좌우 똑같이 하도록 짝수로
+  return n;
+}
+
 export function dayPlan(challenge, index) {
   const lv = LEVELS[challenge.level] || LEVELS.normal;
   const key = CYCLE[index % 7];
   const tpl = TEMPLATES[key];
-  const grow = 1 + Math.min(0.08 * Math.floor(index / 7), 0.6);
+  const grow = 1 + Math.min(0.08 * Math.floor(index / 7), 0.6); // 매주 8%씩, 최대 60%
+  const adapt = challenge.adapt || 1;
+  const sec = lv.work * grow * adapt * (key === 'R' ? 0.8 : 1);
   const items = tpl.items.map((id) => {
     if (id === 'pushup' && challenge.level === 'easy') id = 'kneePushup';
-    const ex = EXERCISES[id];
-    let n = BASE[id] * lv.mult * grow * (key === 'R' ? 0.8 : 1);
-    n = ex.type === 'hold' ? Math.round(n / 5) * 5 : Math.max(3, Math.round(n));
-    if (ex.sides && n % 2) n++; // 좌우 똑같이 하도록 짝수로
-    return { id, sets: key === 'R' ? 1 : lv.sets, target: n };
+    return { id, sets: key === 'R' ? 1 : lv.sets, target: targetFor(EXERCISES[id], sec), sec: Math.round(sec) };
   });
-  return { key, title: tpl.title, tag: tpl.tag, rest: lv.rest, items };
+  return { key, title: tpl.title, tag: tpl.tag, rest: lv.rest, items, adapt };
 }
 
 export function estimateSec(plan) {
@@ -55,8 +60,7 @@ export const kcalFor = (met, kg, sec) => (met * 3.5 * kg / 200) * (sec / 60);
 export function miniPlan(plan) {
   const items = plan.items.slice(0, 3).map((it) => {
     const ex = EXERCISES[it.id];
-    const t = it.target * 0.6;
-    return { ...it, sets: 1, target: ex.type === 'hold' ? Math.max(15, Math.round(t / 5) * 5) : Math.max(5, Math.round(t)) };
+    return { ...it, sets: 1, target: targetFor(ex, (it.sec || 30) * 0.6) };
   });
   return { ...plan, title: '7분 미니 운동', tag: 'Mini', rest: 20, items, mini: true };
 }
