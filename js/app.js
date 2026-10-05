@@ -11,7 +11,7 @@ import { startPlaybackMode, stopPlaybackMode } from './audio.js';
 import { icon } from './icons.js';
 import * as RW from './rewards.js';
 import { PUSH_HOUR, pushSupported, currentSubscription, enablePush, disablePush, showNow as webShowNow } from './push.js';
-import { isNative, nativeNotifyPermission, nativeNotifyEnable, nativeReschedule, nativeShowNow, onBackButton, onResume } from './native.js';
+import { nativeShareFile, setThemeBars, isNative, nativeNotifyPermission, nativeNotifyEnable, nativeReschedule, nativeShowNow, onBackButton, onResume } from './native.js';
 import {
   db, save, replaceAll, resetAll, today, addDays, diffDays, parse, fmt, dayIndex, streak, bestStreak, latestWeight, onSave,
 } from './store.js';
@@ -269,7 +269,7 @@ function home() {
     ${photoDay ? `<div class="note"><b>오늘은 몸 사진 찍는 날 · Day ${i + 1}</b><p class="muted">같은 자리, 같은 각도로 찍어 두면 변화 리포트에서 Day 1과 나란히 비교해 줘요.</p>
       <button class="btn ghost" data-go-to="rewards" data-anchor="report">${icon('camera')} 사진 기록하러 가기</button></div>` : ''}
 
-    ${doneCount >= 3 && daysSince(db().prefs.lastBackup) >= 7 ? `<div class="note"><b>${db().prefs.lastBackup ? `백업한 지 ${daysSince(db().prefs.lastBackup)}일 지났어요` : '아직 백업한 적이 없어요'}</b><p class="muted">기록·코인·몸 사진은 이 폰에만 있어요. 파일 앱(iCloud Drive)에 한 번 저장해 두세요.</p><button class="btn ghost" data-act="backup">${icon('download')} 지금 백업하기</button></div>` : ''}
+    ${doneCount >= 3 && daysSince(db().prefs.lastBackup) >= 7 ? `<div class="note"><b>${db().prefs.lastBackup ? `백업한 지 ${daysSince(db().prefs.lastBackup)}일 지났어요` : '아직 백업한 적이 없어요'}</b><p class="muted">기록·코인·몸 사진은 이 폰에만 있어요. ${isNative() ? '구글 드라이브나 내 파일' : '파일 앱(iCloud Drive)'}에 한 번 저장해 두세요.</p><button class="btn ghost" data-act="backup">${icon('download')} 지금 백업하기</button></div>` : ''}
     ${missedY ? `<div class="note"><b>어제 Day ${yi + 1}을 놓쳤어요</b><p class="muted">오늘 안에 보충하면 연속 기록이 이어져요.</p>
       <button class="btn ghost" data-act="start" data-date="${y}">어제 운동 보충하기</button></div>` : ''}
 
@@ -534,6 +534,11 @@ async function backupNow() {
   }
   const name = `오늘홈트-백업-${today()}.json`;
   const file = new File([JSON.stringify(data)], name, { type: 'application/json' });
+  if (isNative()) {
+    if (!(await nativeShareFile(name, JSON.stringify(data), '오늘홈트 백업'))) return false;
+    db().prefs.lastBackup = today(); save();
+    return true;
+  }
   let done = false;
   // 아이폰: 공유 시트 → "파일에 저장"으로 iCloud Drive에 바로 저장
   if (navigator.canShare?.({ files: [file] })) {
@@ -874,7 +879,7 @@ function settings() {
       <div class="block set">
         <div class="block-head"><h2>${icon('play')}운동 플레이어</h2></div>
         <label class="switch"><span>음성으로 횟수 세기</span><input type="checkbox" id="voice" ${p.voice ? 'checked' : ''}></label>
-        <p class="muted small">영상은 항상 기본 속도로 재생되고, 한 번 동작이 끝날 때마다 자동으로 횟수를 세요. 운동 중에는 아이폰 무음 스위치를 켜 둬도 음성과 음악이 나와요.</p>
+        <p class="muted small">영상은 항상 기본 속도로 재생되고, 한 번 동작이 끝날 때마다 자동으로 횟수를 세요.${isNative() ? '' : ' 운동 중에는 아이폰 무음 스위치를 켜 둬도 음성과 음악이 나와요.'}</p>
       </div>
       <div class="block set">
         <div class="block-head"><h2>${icon('music')}배경음악</h2></div>
@@ -886,7 +891,7 @@ function settings() {
       </div>
       <div class="block set">
         <div class="block-head"><h2>${icon('download')}백업</h2><span class="muted small">${p.lastBackup ? `마지막 백업 ${daysSince(p.lastBackup) === 0 ? '오늘' : daysSince(p.lastBackup) + '일 전'}` : '아직 없음'}</span></div>
-        <p class="muted small">기록·코인·몸 사진을 파일 하나로 저장해요. 공유 화면에서 "파일에 저장"을 고르면 iCloud Drive에 들어가요. 7일이 지나면 홈에서 알려 드려요.</p>
+        <p class="muted small">기록·코인·몸 사진을 파일 하나로 저장해요. ${isNative() ? '공유 화면에서 구글 드라이브나 내 파일을 고르세요.' : '공유 화면에서 "파일에 저장"을 고르면 iCloud Drive에 들어가요.'} 7일이 지나면 홈에서 알려 드려요.</p>
         <div class="row"><button class="btn primary" data-act="export">지금 백업하기</button>
           <label class="btn ghost">백업 불러오기<input type="file" accept="application/json" id="imp" hidden></label></div>
       </div>
@@ -1070,6 +1075,7 @@ function icsFile(c) {
 }
 
 function download(name, text, type) {
+  if (isNative()) { nativeShareFile(name, text, name).catch(() => toast('파일을 저장하지 못했어요')); return; }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([text], { type }));
   a.download = name; a.click();
@@ -1099,6 +1105,7 @@ function applyTheme() {
   else document.documentElement.dataset.theme = t;
   const dark = t === 'dark' || (t === 'system' && darkQuery.matches);
   document.getElementById('themeColor')?.setAttribute('content', dark ? '#111213' : '#ecedea');
+  setThemeBars(dark ? '#111213' : '#ecedea', dark);
 }
 darkQuery.addEventListener('change', applyTheme);
 applyTheme();

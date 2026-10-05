@@ -6,6 +6,14 @@ const reg = window.capacitorExports?.registerPlugin || C?.registerPlugin;
 const LN = isNative() ? reg('LocalNotifications') : null;
 const App = isNative() ? reg('App') : null;
 const Awake = isNative() ? reg('KeepAwake') : null; // MainActivity.java 안의 작은 플러그인
+const Ui = isNative() ? reg('SystemUi') : null; // 〃
+
+// 상태 표시줄 영역 색: 테마 색(base)을 기억해 두고, 운동 화면처럼 잠깐 다른 색이 필요하면 덮어썼다가 되돌린다
+let baseBars = null;
+const paintBars = (b) => { Ui?.setColor(b).catch(() => {}); };
+export const setThemeBars = (color, dark) => { baseBars = { color, dark }; paintBars(baseBars); };
+export const overrideBars = (color, dark) => paintBars({ color, dark });
+export const restoreBars = () => { if (baseBars) paintBars(baseBars); };
 
 // 운동 중 화면 꺼짐 방지 (앱에서만. 웹은 player.js가 Wake Lock API를 쓴다)
 export const keepAwake = (on) => { Awake?.[on ? 'keepAwake' : 'allowSleep']().catch(() => {}); };
@@ -33,6 +41,7 @@ export async function nativeNotifyEnable() {
 
 const note = (id, m, at) => ({
   id, title: m.title, body: m.body, largeBody: m.body, channelId: CHANNEL, smallIcon: 'ic_stat_notify', iconColor: '#E8613C',
+  isExactNotification: false, // 정확한 알람 권한을 요구하지 않는다 (요구하면 플러그인이 설정 화면을 연다). 8시 '쯤' 울리면 충분하다
   ...(at ? { schedule: { at, allowWhileIdle: true } } : {}),
 });
 
@@ -59,8 +68,18 @@ export async function nativeReschedule(data, hour) {
 export async function nativeShowNow(data) {
   if (!LN || (await nativeNotifyPermission()) !== 'granted') return false;
   await ensureChannel();
-  await LN.schedule({ notifications: [note(BASE_ID + 100, self.buildPushMessage(data), new Date(Date.now() + 1000))] });
+  await LN.schedule({ notifications: [note(BASE_ID + 100, self.buildPushMessage(data))] }); // 예약 시각 없이 → 바로 표시
   return true;
+}
+
+// 파일 저장(백업·캘린더): 웹뷰는 다운로드와 Web Share를 지원하지 않아서, 캐시에 파일을 쓰고 안드로이드 공유 화면을 연다
+// → 구글 드라이브·내 파일·카카오톡 등으로 보낼 수 있다. 사용자가 공유를 닫으면 false
+const Fs = isNative() ? reg('Filesystem') : null;
+const Share = isNative() ? reg('Share') : null;
+export async function nativeShareFile(name, text, title) {
+  const { uri } = await Fs.writeFile({ path: name, data: text, directory: 'CACHE', encoding: 'utf8', recursive: true });
+  try { await Share.share({ title, files: [uri], dialogTitle: title }); return true; }
+  catch (e) { if (/cancel/i.test(e.message || '')) return false; throw e; }
 }
 
 // 안드로이드 뒤로 가기: handler가 true를 돌려주면 처리한 것, 아니면 앱을 백그라운드로 보낸다

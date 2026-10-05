@@ -82,7 +82,7 @@
       return { title: '오늘 끝내면 "' + coupon.name + '" 교환 가능', body: '지금 ' + x.coins + ' 코인, 오늘 완주하면 ' + coupon.cost + ' 코인을 넘어요. ' + line };
     }
     if (x.weekDone === 4) return { title: '오늘 하면 주간 미션 달성', body: '이번 주 4일 했어요. 오늘 하면 "5일 운동" 미션을 채워요. ' + line };
-    if (!x.anyBefore) return { title: '첫 운동, 오늘 시작해요', body: '처음이 제일 어려워요. 아바타를 따라 천천히 해도 충분해요. ' + line };
+    if (!x.anyBefore) return { title: '첫 운동, 오늘 시작해요', body: '처음이 제일 어려워요. 영상 속 코치를 따라 천천히 해도 충분해요. ' + line };
     if (milestone) return { title: fill('오늘 하면 {next}일 연속 배지', v), body: line };
     return {
       title: fill(pick(['오늘의 홈트 시간이에요', 'Day {day}, 준비됐나요?', '{left}일 남은 챌린지, 오늘도 한 칸', '오늘 몫을 채울 시간이에요'], seed), v),
