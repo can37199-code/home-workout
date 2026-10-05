@@ -1,4 +1,4 @@
-package com.superdalkom.homet;
+package com.can3719.homet;
 
 import android.os.Bundle;
 import android.view.WindowManager;
