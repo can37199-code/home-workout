@@ -51,7 +51,9 @@ function mirror() {
 }
 mirror();
 
-export function save() { localStorage.setItem(KEY, JSON.stringify(data)); mirror(); }
+const saveListeners = [];
+export const onSave = (fn) => saveListeners.push(fn);
+export function save() { localStorage.setItem(KEY, JSON.stringify(data)); mirror(); saveListeners.forEach((fn) => fn(data)); }
 export function replaceAll(next) { data = withDefaults(next); save(); }
 export function resetAll() { data = defaults(); save(); }
 

@@ -1,10 +1,10 @@
 // 오프라인에서도 동작하도록 앱 파일을 캐시한다. 파일을 바꾸면 VERSION을 올린다.
-const VERSION = 'v21';
+const VERSION = 'v22';
 const MEDIA_CACHE = 'media-v9'; // 같은 이름의 영상 파일을 바꾸면 이 값도 올린다
 const FILES = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css', 'css/rewards.css', 'css/design.css',
   'js/app.js', 'js/audio.js', 'js/voice.js', 'js/voice-lines.js', 'js/avatar.js', 'js/icons.js', 'js/idb.js', 'js/media.js', 'js/music.js', 'js/ui.js',
-  'js/exercises.js', 'js/plan.js', 'js/player.js', 'js/push.js', 'js/push-messages.js', 'js/rewards.js', 'js/store.js',
+  'js/exercises.js', 'js/plan.js', 'js/player.js', 'js/push.js', 'js/push-messages.js', 'js/native.js', 'js/rewards.js', 'js/store.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/badge-96.png',
 ];
 

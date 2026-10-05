@@ -4,6 +4,16 @@
   "type": "module",
   "scripts": {
     "voice": "node tools/make-voice.mjs --force",
-    "serve": "node tools/serve.mjs"
+    "serve": "node tools/serve.mjs",
+    "build:android": "node tools/build-native.mjs && npx cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/local-notifications": "^8.3.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.2"
   }
 }

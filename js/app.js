@@ -10,9 +10,10 @@ import { saveBlob, loadBlob } from './idb.js';
 import { startPlaybackMode, stopPlaybackMode } from './audio.js';
 import { icon } from './icons.js';
 import * as RW from './rewards.js';
-import { PUSH_HOUR, pushSupported, currentSubscription, enablePush, disablePush, showNow } from './push.js';
+import { PUSH_HOUR, pushSupported, currentSubscription, enablePush, disablePush, showNow as webShowNow } from './push.js';
+import { isNative, nativeNotifyPermission, nativeNotifyEnable, nativeReschedule, nativeShowNow, onBackButton, onResume } from './native.js';
 import {
-  db, save, replaceAll, resetAll, today, addDays, diffDays, parse, fmt, dayIndex, streak, bestStreak, latestWeight,
+  db, save, replaceAll, resetAll, today, addDays, diffDays, parse, fmt, dayIndex, streak, bestStreak, latestWeight, onSave,
 } from './store.js';
 
 const app = document.getElementById('app');
@@ -60,6 +61,7 @@ function challengeDays(c) {
 }
 
 // ---------- 화면 전환 ----------
+let currentView = null;
 function go(view, arg) {
   clearThumbs();
   music.stop();
@@ -68,6 +70,7 @@ function go(view, arg) {
   if (!c && view !== 'setup') view = 'setup';
   nav.classList.toggle('hidden', view === 'setup' || view === 'player' || view === 'finish');
   nav.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.go === view));
+  currentView = view;
   ({ setup, home, calendar, rewards, stats, settings, player, finish })[view](arg);
   enhance();
 }
@@ -434,7 +437,7 @@ function finish({ date, r, award }) {
     save(); go('home');
     // 저녁 8시 알림이 이미 지난 뒤에 운동을 마쳤다면, 오늘의 성과 알림을 지금 보낸다 (8시 전이면 8시 알림이 성과를 정리해 준다)
     if (new Date().getHours() >= PUSH_HOUR && !db().rewards.recapSent?.[date]) {
-      showNow(db()).then((ok) => { if (ok) { (db().rewards.recapSent ||= {})[date] = true; save(); } });
+      (isNative() ? nativeShowNow(db()) : webShowNow(db())).then((ok) => { if (ok) { (db().rewards.recapSent ||= {})[date] = true; save(); } });
     }
   });
 }
@@ -841,7 +844,12 @@ function settings() {
         <div class="row-between"><div><b>${c.days}일 · ${LEVELS[c.level].label}</b><p class="muted small">${dateLabel(c.start)} 시작</p></div>
           <button class="btn ghost small" data-act="edit">바꾸기</button></div>
       </div>
-      <div class="block set" id="pushSec">
+      ${isNative() ? `<div class="block set" id="notifySec">
+        <div class="block-head"><h2>${icon('bell')}알림</h2><span class="muted small">매일 저녁 8시</span></div>
+        <p class="muted small" id="notifyStatus">확인하는 중…</p>
+        <div class="row"><button class="btn primary" data-act="notify-toggle">알림 켜기</button><button class="btn ghost" data-act="notify-test">알림 미리보기</button></div>
+      </div>` : ''}
+      <div class="block set${isNative() ? ' hidden' : ''}" id="pushSec">
         <div class="block-head"><h2>${icon('bell')}푸시 알림</h2><span class="muted small">매일 저녁 8시</span></div>
         <p class="muted small" id="pushStatus">확인하는 중…</p>
         <div class="row"><button class="btn primary" data-act="push-on">푸시 알림 켜기</button><button class="btn ghost" data-act="push-test">알림 미리보기</button></div>
@@ -919,7 +927,31 @@ function settings() {
   const on = (act, fn) => app.querySelector(`[data-act="${act}"]`).addEventListener('click', fn);
   on('edit', () => go('setup'));
 
-  // 푸시 알림
+  // 앱: 폰 예약 알림
+  if (isNative()) {
+    const st = app.querySelector('#notifyStatus'), tg = app.querySelector('[data-act="notify-toggle"]');
+    const refresh = async () => {
+      const perm = await nativeNotifyPermission();
+      const onNow = p.notify === true && perm === 'granted';
+      st.textContent = perm === 'denied' ? '알림이 꺼져 있어요. 폰 설정 → 애플리케이션 → 오늘홈트 → 알림에서 허용해 주세요.'
+        : onNow ? '켜져 있어요. 매일 저녁 8시, 운동 전이면 독려를, 운동 후면 오늘의 성과를 알려 줘요.'
+        : '꺼져 있어요. 켜면 운동 전에는 독려, 운동 후에는 오늘의 성과를 알려 줘요.';
+      tg.textContent = onNow ? '알림 끄기' : '알림 켜기';
+      tg.className = onNow ? 'btn ghost' : 'btn primary';
+    };
+    refresh();
+    tg.addEventListener('click', async () => {
+      if (p.notify === true && (await nativeNotifyPermission()) === 'granted') p.notify = false;
+      else if (await nativeNotifyEnable()) p.notify = true;
+      else notify('알림 권한을 허용해야 저녁 알림을 받을 수 있어요.');
+      save(); refresh();
+    });
+    app.querySelector('[data-act="notify-test"]').addEventListener('click', async () => {
+      if (!(await nativeShowNow(db()))) notify('먼저 "알림 켜기"로 알림 권한을 허용해 주세요.');
+    });
+  }
+
+  // 푸시 알림 (웹)
   const pushStatus = app.querySelector('#pushStatus');
   const showSub = (json) => {
     app.querySelector('#pushSub').classList.toggle('hidden', !json);
@@ -933,13 +965,13 @@ function settings() {
     else pushStatus.textContent = '꺼져 있어요. 켜면 운동 전에는 독려, 운동 후에는 오늘의 성과를 알려 줘요.';
     showSub(sub ? JSON.stringify(sub.toJSON()) : '');
   };
-  refreshPush();
+  if (!isNative()) refreshPush();
   on('push-on', async () => {
     try { await enablePush(); await refreshPush(); app.querySelector('#pushSub').open = true; }
     catch (err) { notify(err.message === 'denied' ? '알림 권한을 허용해야 푸시를 받을 수 있어요.' : '이 브라우저에서는 푸시 알림을 켤 수 없어요.'); }
   });
   on('push-test', async () => {
-    if (!(await showNow(db()))) notify('먼저 "푸시 알림 켜기"로 알림 권한을 허용해 주세요.');
+    if (!(await webShowNow(db()))) notify('먼저 "푸시 알림 켜기"로 알림 권한을 허용해 주세요.');
   });
   on('push-copy', async () => {
     const t = app.querySelector('#pushJson').textContent;
@@ -1071,6 +1103,18 @@ function applyTheme() {
 darkQuery.addEventListener('change', applyTheme);
 applyTheme();
 
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
+if (!isNative() && 'serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
+if (isNative()) {
+  let t = 0;
+  const resched = () => { clearTimeout(t); t = setTimeout(() => nativeReschedule(db(), PUSH_HOUR).catch(() => {}), 800); };
+  onSave(resched); onResume(resched); resched();
+  onBackButton(() => {
+    const modal = document.querySelector('.modal');
+    if (modal) { modal.dispatchEvent(new MouseEvent('click', { bubbles: true })); return true; }
+    if (currentView === 'player') { app.querySelector(app.querySelector('#pPause')?.classList.contains('hidden') ? '[data-act="pause"]' : '[data-act="exit"]')?.click(); return true; }
+    if (currentView !== 'home' && db().challenge) { go('home'); return true; }
+    return false;
+  });
+}
 navigator.storage?.persist?.();
 go(db().challenge ? 'home' : 'setup');

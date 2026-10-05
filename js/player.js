@@ -13,6 +13,7 @@ import { icon } from './icons.js';
 import { say, preloadVoice, voiceLength, stopVoice, setVoiceEnabled } from './voice.js';
 import { MAX_COUNT } from './voice-lines.js';
 import { MEDIA } from './media.js';
+import { keepAwake } from './native.js';
 
 const hasMyMusic = () => loadBlob('myMusic').then(Boolean).catch(() => false);
 
@@ -96,7 +97,7 @@ export function runWorkout(root, { plan, onFinish, onExit, open = false, best = 
   let wakeLock = null;
   const lock = async () => { try { wakeLock = await navigator.wakeLock?.request('screen'); } catch { /* 지원 안 함 */ } };
   const onVis = () => { if (document.visibilityState === 'visible') lock(); };
-  lock(); document.addEventListener('visibilitychange', onVis);
+  lock(); keepAwake(true); document.addEventListener('visibilitychange', onVis);
 
   // ---- 배경음악 (정속도) ----
   const mp = prefs.music;
@@ -278,7 +279,7 @@ export function runWorkout(root, { plan, onFinish, onExit, open = false, best = 
     avatar.destroy();
     video.pause();
     document.removeEventListener('visibilitychange', onVis);
-    wakeLock?.release?.().catch(() => {});
+    wakeLock?.release?.().catch(() => {}); keepAwake(false);
     music.stop();
     stopPlaybackMode();
   }

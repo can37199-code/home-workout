@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">오늘홈트</string>
+    <string name="title_activity_main">오늘홈트</string>
+    <string name="package_name">com.superdalkom.homet</string>
+    <string name="custom_url_scheme">com.superdalkom.homet</string>
+</resources>
