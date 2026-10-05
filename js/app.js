@@ -920,6 +920,7 @@ function settings() {
           <li><b>글꼴</b><span class="muted small">Pretendard (SIL Open Font License 1.1), Apple SD Gothic Neo</span></li>
           <li><b>안전 안내</b><span class="muted small">이 앱은 의료 조언을 대신하지 않아요. 지병·부상·임신 중이거나 운동 중 통증·어지러움이 있으면 멈추고 전문가와 상담하세요.</span></li>
         </ul>
+        <p class="legal-links"><a href="https://can37199-code.github.io/home-workout/terms.html" target="_blank" rel="noopener">이용약관</a><span class="dot"></span><a href="https://can37199-code.github.io/home-workout/privacy.html" target="_blank" rel="noopener">개인정보처리방침</a></p>
       </div>
       <div class="block set">
         <div class="block-head"><h2>${icon('trash')}데이터</h2></div>

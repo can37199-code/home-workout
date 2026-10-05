@@ -259,3 +259,5 @@ input:focus, textarea:focus { background: var(--panel); border-color: var(--ink)
 .credits { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
 .credits li { display: flex; flex-direction: column; gap: 2px; }
 .credits b { font-size: 14px; }
+.legal-links { display: flex; align-items: center; gap: 10px; margin: 4px 0 0; font-size: 13px; }
+.legal-links a { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
