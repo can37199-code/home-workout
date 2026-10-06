@@ -112,7 +112,7 @@ function setup() {
   app.innerHTML = `
   <section class="page setup">
     <div class="setup-hero">
-      ${c ? '<span class="eyebrow">챌린지 설정</span><div class="display ko">계획<br>바꾸기</div>' : '<span class="eyebrow">챌린지 정하기</span><div class="display ko">나의<br>챌린지</div>'}
+      ${c ? '<span class="eyebrow">챌린지 설정</span><div class="display ko">계획<br>바꾸기</div>' : `${obSteps(2)}<span class="eyebrow">챌린지 정하기</span><div class="display ko">나의<br>챌린지</div>`}
       <p class="muted">기간을 정하고 하루도 빠짐없이 해 봐요. 기록은 이 폰에만 저장돼요.</p>
     </div>
     <form id="f" class="form">
@@ -167,21 +167,37 @@ function setup() {
 }
 
 // ---------- 첫 실행 안내: 환영 → 건강 확인 → 챌린지 설정 → (앱) 알림 허용 ----------
+// 첫 화면·이용권 화면 위쪽의 코치 영상: 동작 몇 개를 번갈아 반복 재생한다 (소리 없음)
+const HERO_CLIPS = ['squat', 'jumpingJack', 'lunge', 'mountainClimber'];
+function heroVideo(cls = '') {
+  return `<div class="hero-video ${cls}"><video id="heroV" muted playsinline autoplay preload="auto" poster="${MEDIA.squat.poster}"></video><span class="p-ai">AI 생성 영상</span></div>`;
+}
+function startHero() {
+  const v = app.querySelector('#heroV'); if (!v) return;
+  let k = 0, loops = 0;
+  const load = () => { v.src = MEDIA[HERO_CLIPS[k]].src; v.play().catch(() => {}); };
+  v.addEventListener('ended', () => { if (++loops >= 2) { loops = 0; k = (k + 1) % HERO_CLIPS.length; load(); } else { v.currentTime = 0; v.play().catch(() => {}); } });
+  load();
+}
+const obSteps = (n) => `<div class="ob-steps" aria-label="${n} / 3단계">${[1, 2, 3].map((k) => `<i class="${k <= n ? 'on' : ''}"></i>`).join('')}</div>`;
+
 function welcome() {
   app.innerHTML = `
-  <section class="page onboard">
-    <div class="setup-hero">
+  <section class="page onboard welcome">
+    ${heroVideo('tall')}
+    <div class="ob-hero-text">
       ${wordmark('xl')}
-      <p class="ob-slogan">집에서 하루 10~20분,<br>정해진 기간 동안 빠짐없이.</p>
+      <p class="ob-slogan">집에서 하루 10~20분,<br>코치 영상 따라 빠짐없이.</p>
     </div>
     <ul class="ob-points">
       <li>${icon('play')}<div><b>영상 코치를 따라 하면 끝</b><span>동작마다 영상과 음성이 횟수를 세 줘요.</span></div></li>
-      <li>${icon('sparkle')}<div><b>영상 속 코치는 AI 가상 인물이에요</b><span>생성형 AI로 만든 인물로, 실제 사람이 아니에요.</span></div></li>
-      <li>${icon('download')}<div><b>기록은 이 폰에만 저장돼요</b><span>가입 없이 시작하고, 서버로 보내지 않아요.</span></div></li>
+      <li>${icon('trophy')}<div><b>매일 하면 쌓이는 보상</b><span>코인을 모아 내가 정한 선물로 바꿔요.</span></div></li>
+      <li>${icon('download')}<div><b>가입 없이, 기록은 이 폰에만</b><span>영상 속 코치는 AI로 만든 가상 인물이에요.</span></div></li>
     </ul>
-    <button class="btn primary big" data-act="next"><span>시작하기</span>${icon('arrow')}</button>
-    <p class="legal-links center"><a href="https://can37199-code.github.io/home-workout/terms.html" target="_blank" rel="noopener">이용약관</a><span class="dot"></span><a href="https://can37199-code.github.io/home-workout/privacy.html" target="_blank" rel="noopener">개인정보처리방침</a></p>
+    <button class="btn primary big" data-act="next"><span>7일 무료로 시작하기</span>${icon('arrow')}</button>
+    <p class="legal-links center"><a href="${LEGAL.terms}" target="_blank" rel="noopener">이용약관</a><span class="dot"></span><a href="${LEGAL.privacy}" target="_blank" rel="noopener">개인정보처리방침</a></p>
   </section>`;
+  startHero();
   app.querySelector('[data-act="next"]').addEventListener('click', () => go('health'));
 }
 
@@ -197,8 +213,9 @@ const HEALTH_QS = [
 function health() {
   app.innerHTML = `
   <section class="page onboard">
-    <header class="ob-head"><span class="eyebrow">시작 전 확인</span><h1>운동 전 건강 확인</h1>
-      <p class="muted">안전하게 시작하려고 여쭤봐요. 답은 이 폰에만 저장돼요.</p></header>
+    <header class="ob-head">${obSteps(1)}<span class="eyebrow">시작 전 확인</span><h1>운동 전 건강 확인</h1>
+      <p class="muted">안전하게 시작하려고 여쭤봐요. 답은 이 폰에만 저장돼요.</p>
+      <button class="btn ghost hq-none" type="button" data-act="none">${icon('check')} 모두 해당 없어요</button></header>
     <div class="block hq-list">
       ${HEALTH_QS.map((q, k) => `<div class="hq" data-k="${k}"><p>${q}</p><div class="seg"><button type="button" data-v="0">아니요</button><button type="button" data-v="1">예</button></div></div>`).join('')}
     </div>
@@ -220,6 +237,11 @@ function health() {
     ans[Number(row.dataset.k)] = Number(b.dataset.v); refresh();
   }));
   ack.addEventListener('change', refresh);
+  app.querySelector('[data-act="none"]').addEventListener('click', () => {
+    app.querySelectorAll('.hq').forEach((row) => row.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x.dataset.v === '0')));
+    ans.fill(0); refresh();
+    btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
   btn.addEventListener('click', () => {
     db().prefs.health = { date: today(), yes: ans.map((v, k) => (v ? k : -1)).filter((k) => k >= 0) };
     db().prefs.onboarded = true; save();
@@ -231,7 +253,7 @@ function health() {
 function notifyAsk() {
   app.innerHTML = `
   <section class="page onboard">
-    <header class="ob-head"><span class="eyebrow">마지막 단계 · 알림</span><h1>매일 ${remindLabel(db())}에<br>알려 드릴까요?</h1>
+    <header class="ob-head">${obSteps(3)}<span class="eyebrow">마지막 단계 · 알림</span><h1>매일 ${remindLabel(db())}에<br>알려 드릴까요?</h1>
       <p class="muted">운동 전에는 오늘 할 운동과 보상을, 운동 후에는 오늘의 성과를 알려 드려요. 설정에서 언제든 끌 수 있어요.</p></header>
     <div class="ob-bell">${icon('bell')}</div>
     <button class="btn primary big" data-act="yes"><span>알림 받기</span>${icon('arrow')}</button>
@@ -254,35 +276,54 @@ const trialChip = () => {
   return '';
 };
 
+// 지금까지의 내 기록 (이용권 화면에서 "이어 가기"를 권할 때)
+function myRecord() {
+  const logs = Object.values(db().logs).filter((l) => l.done);
+  return { days: logs.length, kcal: Math.round(logs.reduce((n, l) => n + (l.kcal || 0), 0)), min: Math.round(logs.reduce((n, l) => n + (l.sec || 0), 0) / 60), streak: streak() };
+}
+
 function paywall(arg = {}) {
   const a = BILL.access();
-  const head = a.status === 'expired' ? '무료 체험이 끝났어요' : a.status === 'premium' || a.status === 'owner' ? '평생 이용권을 갖고 있어요' : `무료 체험 ${a.daysLeft === 1 ? '오늘까지' : `${a.daysLeft}일 남음`}`;
   const owned = a.status === 'premium' || a.status === 'owner';
+  const rec = myRecord();
+  const md = (d) => { const x = parse(d); return `${x.getMonth() + 1}월 ${x.getDate()}일`; };
+  const head = a.status === 'expired' ? '무료 체험이 끝났어요' : owned ? '평생 이용권을 갖고 있어요' : `무료 체험 ${a.daysLeft === 1 ? '오늘까지' : `${a.daysLeft}일 남음`}`;
+  const title = a.status === 'expired' && rec.days ? '여기서 멈추기엔<br>아까운 기록이에요' : '매일 하는 습관,<br>평생 이용권으로';
   app.innerHTML = `
   <section class="page paywall">
-    <header class="pw-top"><button class="icon-btn" data-act="close" aria-label="닫기">${icon('close')}</button></header>
+    <div class="pw-media">
+      ${heroVideo()}
+      <button class="icon-btn pw-close" data-act="close" aria-label="닫기">${icon('close')}</button>
+    </div>
     <div class="pw-hero">
       <span class="eyebrow">${head}</span>
-      <h1>매일 하는 습관,<br>평생 이용권으로</h1>
-      <p class="muted">한 번만 결제하면 계속 쓸 수 있어요. 구독이 아니라 자동 결제가 없어요.</p>
+      <h1>${title}</h1>
     </div>
+    ${rec.days ? `<div class="pw-record"><span class="eyebrow">지금까지 내 기록</span>
+      <div><b class="num">${rec.days}<small>일</small></b><span>운동한 날</span></div>
+      <div><b class="num">${rec.kcal.toLocaleString()}<small>kcal</small></b><span>소모 칼로리</span></div>
+      <div><b class="num">${rec.min}<small>분</small></b><span>운동 시간</span></div></div>` : ''}
     <ul class="pw-list">
-      <li>${icon('play')}<span>모든 챌린지와 운동 프로그램</span></li>
-      <li>${icon('sparkle')}<span>실사 코치 영상과 음성 코칭, 운동량 자동 조절</span></li>
-      <li>${icon('trophy')}<span>코인·배지·보상, 기록과 체중 통계</span></li>
-      <li>${icon('bell')}<span>매일 운동 알림과 오늘의 성과 정리</span></li>
-      <li>${icon('download')}<span>이후 업데이트로 추가되는 기능 포함</span></li>
+      <li>${icon('play')}<div><b>실사 코치 영상 + 음성 코칭</b><span>보고 따라 하면 횟수는 앱이 세요</span></div></li>
+      <li>${icon('flag')}<div><b>모든 챌린지 프로그램</b><span>컨디션에 맞춰 운동량이 자동으로 바뀌어요</span></div></li>
+      <li>${icon('trophy')}<div><b>보상·배지·알림으로 끝까지</b><span>이후 추가되는 기능도 모두 포함</span></div></li>
     </ul>
-    <div class="pw-price"><div><b>${BILL.PRODUCT.priceLabel}</b><span>한 번 결제 · 평생 이용</span></div><span class="tag">구독 아님</span></div>
+    ${a.status === 'trial' ? `<ol class="pw-timeline">
+      <li class="on"><b>오늘</b><span>모든 기능 무료 체험 중</span></li>
+      <li><b>${md(a.endsOn)}</b><span>체험 마지막 날</span></li>
+      <li><b>그 후</b><span>자동 결제 없음 · 원할 때만 구매</span></li>
+    </ol>` : ''}
+    <div class="pw-price"><div><b>${BILL.PRODUCT.priceLabel}</b><span>한 번 결제 · 평생 이용 · 30일 기준 하루 약 330원</span></div><span class="tag">구독 아님</span></div>
     ${a.pending ? '<p class="note">결제를 확인하고 있어요. 확인되면 자동으로 열려요. 잠시 후 다시 확인해 주세요.</p>' : ''}
     ${owned ? `<button class="btn primary big" data-act="close"><span>운동하러 가기</span>${icon('arrow')}</button>`
       : `<button class="btn primary big" data-act="buy"${a.pending ? ' disabled' : ''}><span>${BILL.PRODUCT.priceLabel}에 평생 이용권 구매</span>${icon('arrow')}</button>
          <button class="btn link-btn" data-act="restore">이미 구매했어요 · 구매 복원</button>`}
     ${a.status === 'expired' ? '<button class="btn" data-act="records">구매하지 않고 기록만 보기</button>' : ''}
     <p class="pw-legal">결제는 Google Play 계정으로 처리돼요. 구매 후 7일 이내에는 청약철회할 수 있어요. 다만 유료로 열린 프로그램을 이용하기 시작하면 「전자상거래법」 제17조 제2항에 따라 청약철회가 제한될 수 있어요. 환불은 Google Play 환불 절차를 따라요.</p>
-    <p class="legal-links center"><a href="https://can37199-code.github.io/home-workout/terms.html" target="_blank" rel="noopener">이용약관</a><span class="dot"></span><a href="https://can37199-code.github.io/home-workout/privacy.html" target="_blank" rel="noopener">개인정보처리방침</a></p>
+    <p class="legal-links center"><a href="${LEGAL.terms}" target="_blank" rel="noopener">이용약관</a><span class="dot"></span><a href="${LEGAL.privacy}" target="_blank" rel="noopener">개인정보처리방침</a></p>
     ${BILL.isTestPayment() ? '<p class="pw-test">테스트 결제 모드 · 실제로 돈이 나가지 않아요</p>' : ''}
   </section>`;
+  startHero();
   const on = (act, fn) => app.querySelectorAll(`[data-act="${act}"]`).forEach((b) => b.addEventListener('click', fn));
   on('close', () => go('home'));
   on('records', () => go('calendar'));

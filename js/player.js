@@ -68,7 +68,7 @@ export function runWorkout(root, { plan, onFinish, onExit, open = false, best = 
     </header>
     <div class="p-bar" id="pBar"></div>
     ${bonus ? `<div class="p-reward">${icon('coin')}${bonus}</div>` : ''}
-    <div class="p-stage"><canvas id="pCanvas"></canvas><video id="pVideo" class="hidden"></video><div class="p-badge" id="pBadge"></div><span class="p-ai">AI 생성 영상</span></div>
+    <div class="p-stage"><canvas id="pCanvas"></canvas><div class="p-frame"><video id="pVideo" class="hidden"></video><div class="p-badge" id="pBadge"></div><span class="p-ai">AI 생성 영상</span></div></div>
     <div class="p-info" id="pInfo"></div>
     <div class="p-actions" id="pActions"></div>
     <div class="p-pause hidden" id="pPause">
@@ -128,7 +128,8 @@ export function runWorkout(root, { plan, onFinish, onExit, open = false, best = 
         </div>`;
     } else {
       box.innerHTML = `
-        <div class="p-count"><span id="pBig">0</span><small id="pSmall"></small></div>
+        <div class="p-ring"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="trk" cx="60" cy="60" r="54"/><circle class="prg" id="pRing" cx="60" cy="60" r="54" pathLength="100"/></svg>
+          <div class="p-count"><span id="pBig">0</span><small id="pSmall"></small></div></div>
         <p class="p-sub">${ex.sides && !open ? `${switchAt(step.item.target)}회 하고 다리를 바꿔요` : ex.tips[0]}</p>`;
     }
   }
@@ -178,12 +179,12 @@ export function runWorkout(root, { plan, onFinish, onExit, open = false, best = 
     if (step.kind === 'intro') {
       a.innerHTML = `<button class="btn primary big" data-act="next"><span>바로 시작</span>${icon('arrow')}</button>`;
     } else if (step.kind === 'rest') {
-      a.innerHTML = `<div class="row"><button class="btn ghost" data-act="plus">+10초</button><button class="btn primary" data-act="next">휴식 건너뛰기</button></div>`;
+      a.innerHTML = `<div class="row"><button class="btn ghost p-undo" data-act="plus">+10초</button><button class="btn primary p-main" data-act="next"><span>휴식 건너뛰기</span>${icon('arrow')}</button></div>`;
     } else if (ex.type === 'hold') {
       a.innerHTML = `<button class="btn ghost big" data-act="next"><span>${open ? '기록 끝내기' : '세트 완료'}</span>${icon('check')}</button>`;
     } else {
-      a.innerHTML = `<div class="row"><button class="btn ghost small" data-act="undo" aria-label="한 번 빼기">−1</button>
-        <button class="btn ghost" data-act="next">${open ? '기록 끝내기' : '세트 완료'}</button></div>`;
+      a.innerHTML = `<div class="row"><button class="btn ghost p-undo" data-act="undo" aria-label="한 번 빼기">−1</button>
+        <button class="btn ghost p-main" data-act="next"><span>${open ? '기록 끝내기' : '세트 완료'}</span>${icon('check')}</button></div>`;
     }
   }
 
@@ -193,7 +194,12 @@ export function runWorkout(root, { plan, onFinish, onExit, open = false, best = 
       const foot = $('gFoot'); if (foot) foot.textContent = `${Math.ceil(Math.max(0, timeLeft))}초 후 시작해요`;
       return;
     }
-    const big = $('pBig'), small = $('pSmall');
+    const big = $('pBig'), small = $('pSmall'), ring = $('pRing');
+    if (ring) {
+      const t = step.item.target;
+      const p = open || !Number.isFinite(t) ? 0 : ex.type === 'reps' ? count / t : 1 - Math.max(0, timeLeft) / t;
+      ring.style.strokeDashoffset = String(100 - Math.min(1, Math.max(0, p)) * 100);
+    }
     if (step.kind === 'work' && ex.type === 'reps') {
       big.textContent = count;
       small.textContent = open ? `최고 ${best}회` : `/ ${step.item.target}회`;
