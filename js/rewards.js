@@ -5,7 +5,7 @@ import { db, save, today, addDays, diffDays, parse, streak, keptDay } from './st
 const R = () => db().rewards;
 
 // ---------- 레벨 ----------
-const TITLES = [[1, 'Rookie', '루키'], [5, 'Challenger', '챌린저'], [10, 'Athlete', '애슬릿'], [15, 'Elite', '엘리트'], [20, 'Legend', '레전드']];
+const TITLES = [[1, '새내기', '새내기'], [5, '도전자', '도전자'], [10, '꾸준러', '꾸준러'], [15, '고수', '고수'], [20, '전설', '전설']];
 export const levelOf = (xp) => Math.floor(Math.sqrt(xp / 50)) + 1;
 const xpAt = (lv) => 50 * (lv - 1) ** 2;
 export function levelInfo(xp = R().xp) {

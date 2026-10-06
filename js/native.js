@@ -91,6 +91,11 @@ export async function nativeShareFile(name, text, title) {
 export function onBackButton(handler) {
   App?.addListener('backButton', () => { if (!handler()) App.minimizeApp(); });
 }
+// 시작 화면: 첫 화면이 다 그려질 때까지 앱 아이콘 화면을 유지한다 (빈 화면이 보이지 않게)
+export function hideSplash() {
+  if (!isNative()) return;
+  requestAnimationFrame(() => setTimeout(() => reg('SplashScreen').hide({ fadeOutDuration: 250 }).catch(() => {}), 120));
+}
 // 앱이 다시 앞으로 나올 때 (알림을 다시 걸 기회)
 export function onResume(fn) {
   App?.addListener('resume', fn);

@@ -73,7 +73,7 @@ export function runWorkout(root, { plan, onFinish, onExit, open = false, best = 
     <div class="p-actions" id="pActions"></div>
     <div class="p-pause hidden" id="pPause">
       <div class="p-pause-box">
-        <h2>Paused</h2>
+        <h2>일시정지</h2>
         <button class="btn primary big" data-act="resume">계속하기</button>
         <div class="music-pick" id="pMusicPick"></div>
         <button class="btn ghost" data-act="skipStep">이 세트 건너뛰기</button>

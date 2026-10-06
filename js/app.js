@@ -13,7 +13,7 @@ import * as RW from './rewards.js';
 import * as BILL from './billing.js';
 import { FLAGS } from './flags.js';
 import { PUSH_HOUR, pushSupported, currentSubscription, enablePush, disablePush, showNow as webShowNow } from './push.js';
-import { remindAt, remindLabel, nativeShareFile, setThemeBars, isNative, nativeNotifyPermission, nativeNotifyEnable, nativeReschedule, nativeShowNow, onBackButton, onResume } from './native.js';
+import { hideSplash, remindAt, remindLabel, nativeShareFile, setThemeBars, isNative, nativeNotifyPermission, nativeNotifyEnable, nativeReschedule, nativeShowNow, onBackButton, onResume } from './native.js';
 import {
   db, save, replaceAll, resetAll, today, addDays, diffDays, parse, fmt, dayIndex, streak, bestStreak, latestWeight, onSave,
 } from './store.js';
@@ -22,8 +22,6 @@ const app = document.getElementById('app');
 const nav = document.getElementById('nav');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const WD = ['일', '월', '화', '수', '목', '금', '토'];
-const MON = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-const DOW = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 const CONDITIONS = { hard: '힘들었어요', ok: '적당했어요', easy: '가뿐했어요' };
 const CHEERS = [
   '어제보다 한 번만 더.', '시작하면 절반은 끝난 거예요.', '작은 반복이 몸을 바꿔요.',
@@ -31,7 +29,9 @@ const CHEERS = [
 ];
 const dateLabel = (s) => { const d = parse(s); return `${d.getMonth() + 1}월 ${d.getDate()}일 ${WD[d.getDay()]}요일`; };
 const dateShort = (s) => { const d = parse(s); return `${d.getMonth() + 1}.${d.getDate()}`; };
-const stamp = (s) => { const d = parse(s); return `${MON[d.getMonth()]} ${String(d.getDate()).padStart(2, '0')} · ${DOW[d.getDay()]}`; };
+const stamp = (s) => { const d = parse(s); return `${d.getMonth() + 1}월 ${d.getDate()}일 ${'일월화수목금토'[d.getDay()]}요일`; };
+// 글자 로고: "오늘"은 가볍게, "홈트"는 굵게, 끝에 진행 점
+const wordmark = (size = '') => `<span class="wordmark ${size}" role="img" aria-label="오늘홈트"><span>오늘</span><b>홈트</b><i></i></span>`;
 const minText = (sec) => `${Math.max(1, Math.round(sec / 60))}분`;
 const pad2 = (n) => String(n).padStart(2, '0');
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -112,8 +112,7 @@ function setup() {
   app.innerHTML = `
   <section class="page setup">
     <div class="setup-hero">
-      <span class="eyebrow">Home Training Challenge</span>
-      <div class="display">${c ? 'Edit<br>Plan' : 'Every<br>Day<em>.</em>'}</div>
+      ${c ? '<span class="eyebrow">챌린지 설정</span><div class="display ko">계획<br>바꾸기</div>' : '<span class="eyebrow">챌린지 정하기</span><div class="display ko">나의<br>챌린지</div>'}
       <p class="muted">기간을 정하고 하루도 빠짐없이 해 봐요. 기록은 이 폰에만 저장돼요.</p>
     </div>
     <form id="f" class="form">
@@ -172,9 +171,8 @@ function welcome() {
   app.innerHTML = `
   <section class="page onboard">
     <div class="setup-hero">
-      <span class="eyebrow">오늘홈트</span>
-      <div class="display">Every<br>Day<em>.</em></div>
-      <p class="muted">집에서 하루 10~20분, 정해진 기간 동안 빠짐없이.</p>
+      ${wordmark('xl')}
+      <p class="ob-slogan">집에서 하루 10~20분,<br>정해진 기간 동안 빠짐없이.</p>
     </div>
     <ul class="ob-points">
       <li>${icon('play')}<div><b>영상 코치를 따라 하면 끝</b><span>동작마다 영상과 음성이 횟수를 세 줘요.</span></div></li>
@@ -425,7 +423,7 @@ function home() {
   } else if (i == null) {
     body = `
     <div class="today hero-today">
-      <span class="eyebrow">Challenge Complete</span>
+      <span class="eyebrow">챌린지 완주</span>
       <div class="day-big"><span class="d">${doneCount}</span><span class="of">/ ${c.days}일</span></div>
       <p>${c.days}일 챌린지를 마쳤어요. 최고 연속 기록은 ${bestStreak()}일이에요.</p>
       ${ticks(c, t)}
@@ -487,7 +485,7 @@ function home() {
     </div>`;
   }
 
-  app.innerHTML = `<section class="page"><header class="page-head"><span class="eyebrow">오늘홈트</span>${installBtn()}</header>${statusBar()}${c ? trialChip() : ''}${body}</section>`;
+  app.innerHTML = `<section class="page"><header class="page-head">${wordmark()}${installBtn()}</header>${statusBar()}${c ? trialChip() : ''}${body}</section>`;
   drawThumbs();
   bindInstall();
   bindCommon(home);
@@ -578,7 +576,7 @@ function finish({ date, r, award }) {
   <section class="page finish">
     <div class="finish-hero rise">
       <span class="eyebrow">${stamp(date)}</span>
-      <div class="display">Day ${pad2(dayIndex(date) + 1)}<em>Done</em></div>
+      <div class="display">Day ${pad2(dayIndex(date) + 1)}<em>완료</em></div>
       ${milestone}
     </div>
     <div class="stat-grid rise">
@@ -858,10 +856,10 @@ function rewards(anchor) {
     <header class="page-head"><h1>보상</h1></header>
 
     <div class="wallet">
-      <div class="wallet-coins"><span class="eyebrow">Coins</span><b class="num" data-count="${r.coins}">${r.coins.toLocaleString()}</b></div>
+      <div class="wallet-coins"><span class="eyebrow">코인</span><b class="num" data-count="${r.coins}">${r.coins.toLocaleString()}</b></div>
       <div class="wallet-side">
-        <div><span class="eyebrow">Level</span><b class="num">${L.lv}</b><small>${L.titleKo}</small></div>
-        <div><span class="eyebrow">Shield</span><b class="num">${r.shields}<small>/ ${RW.MAX_SHIELDS}</small></b><small>방어권</small></div>
+        <div><span class="eyebrow">레벨</span><b class="num">${L.lv}</b><small>${L.titleKo}</small></div>
+        <div><span class="eyebrow">방어권</span><b class="num">${r.shields}<small>/ ${RW.MAX_SHIELDS}</small></b><small>놓친 날 메우기</small></div>
       </div>
       <div class="lvline"><span class="xpbar"><i style="width:${Math.round(L.pct * 100)}%"></i></span><span class="muted small num">다음 레벨까지 ${L.need - L.into} XP</span></div>
       <p class="muted small">방어권은 7일 연속할 때마다 1개씩 받아요(최대 2개). 하루를 놓치면 이틀 뒤 자동으로 써서 연속 기록을 지켜 줘요.</p>
@@ -1042,183 +1040,68 @@ function weightChart(c) {
 }
 
 // ---------- 설정 ----------
-function settings() {
+// 첫 화면은 묶음별 목록(내 챌린지 / 알림·운동 / 화면 / 데이터 / 정보). 자주 안 쓰는 항목은 하위 화면(sub)으로 연다.
+const LEGAL = {
+  terms: 'https://can37199-code.github.io/home-workout/terms.html',
+  privacy: 'https://can37199-code.github.io/home-workout/privacy.html',
+};
+const MUSIC_LABEL = () => (db().prefs.music.style === 'mine' ? '내 음악 파일' : STYLES[db().prefs.music.style]?.label || '끔');
+const srow = ({ ico, title, sub = '', trail = '', act = '', subPage = '', href = '', danger = false, id = '' }) => {
+  const inner = `<span class="sico">${icon(ico)}</span><span class="stext"><b>${title}</b>${sub ? `<span${id ? ` id="${id}"` : ''}>${sub}</span>` : ''}</span>${trail}`;
+  if (href) return `<a class="srow" href="${href}" target="_blank" rel="noopener">${inner}${icon('next')}</a>`;
+  if (act || subPage) return `<button type="button" class="srow${danger ? ' danger' : ''}" ${act ? `data-act="${act}"` : `data-sub="${subPage}"`}>${inner}${trail ? '' : icon('next')}</button>`;
+  return `<div class="srow">${inner}</div>`;
+};
+const sgroup = (title, rows) => `<div class="sgroup"><span class="sgroup-title">${title}</span><div class="sgroup-box">${rows.join('')}</div></div>`;
+const toggle = (id, on) => `<span class="switch"><input type="checkbox" id="${id}" ${on ? 'checked' : ''} aria-label="켜기/끄기"></span>`;
+
+function settings(sub) {
+  if (sub) return settingsSub(sub);
   const c = db().challenge;
   const p = db().prefs;
+  const a = BILL.access();
+  const adaptPct = Math.round((c.adapt || 1) * 100);
   app.innerHTML = `
-  <section class="page">
+  <section class="page settings-page">
     <header class="page-head"><h1>설정</h1></header>
-    <div class="stack">
-      <div class="block set">
-        <div class="block-head"><h2>${icon('flag')}챌린지</h2></div>
-        <div class="row-between"><div><b>${c.days}일 · ${LEVELS[c.level].label}</b><p class="muted small">${dateLabel(c.start)} 시작</p></div>
-          <button class="btn ghost small" data-act="edit">바꾸기</button></div>
-      </div>
-      ${isNative() ? `<div class="block set" id="notifySec">
-        <div class="block-head"><h2>${icon('bell')}알림</h2><span class="muted small">매일 ${remindLabel(db())}</span></div>
-        <p class="muted small" id="notifyStatus">확인하는 중…</p>
-        <div class="row"><button class="btn primary" data-act="notify-toggle">알림 켜기</button><button class="btn ghost" data-act="notify-test">알림 미리보기</button></div>
-      </div>` : ''}
-      <div class="block set${isNative() ? ' hidden' : ''}" id="pushSec">
-        <div class="block-head"><h2>${icon('bell')}푸시 알림</h2><span class="muted small">매일 저녁 8시</span></div>
-        <p class="muted small" id="pushStatus">확인하는 중…</p>
-        <div class="row"><button class="btn primary" data-act="push-on">푸시 알림 켜기</button><button class="btn ghost" data-act="push-test">알림 미리보기</button></div>
-        <details class="hidden" id="pushSub">
-          <summary class="small">구독 정보 · 처음 한 번 등록</summary>
-          <p class="small">아래 구독 정보를 복사해서 Claude에게 보내 주세요. 한 번 등록하면 매일 8시에 알림이 와요. 알림을 껐다 다시 켜면 새로 등록해야 해요.</p>
-          <pre class="sub-json" id="pushJson"></pre>
-          <div class="row"><button class="btn ghost" data-act="push-copy">구독 정보 복사</button><button class="btn danger" data-act="push-off">알림 끄기</button></div>
-        </details>
-      </div>
-      <div class="block set">
-        <div class="block-head"><h2>${icon('calendar')}캘린더 알림</h2></div>
-        <p class="muted small">푸시와 별개로, 폰 캘린더에 매일 ${c.remindAt} 반복 일정을 넣어 둘 수도 있어요.</p>
-        <div class="row"><a class="btn primary" target="_blank" rel="noopener" href="${gcalLink(c)}">구글 캘린더에 추가</a>
-          <button class="btn ghost" data-act="ics">.ics 파일 받기</button></div>
-      </div>
-      <div class="block set">
-        <div class="block-head"><h2>${icon('palette')}화면 테마</h2></div>
-        <div class="seg wide" id="theme">${[['system', '시스템 설정'], ['light', '라이트'], ['dark', '다크']].map(([k, v]) => `<button type="button" data-v="${k}" class="${(p.theme || 'system') === k ? 'on' : ''}">${v}</button>`).join('')}</div>
-        <p class="muted small">시스템 설정을 고르면 폰의 라이트·다크 모드를 따라가요. 운동 화면은 항상 어두운 화면이에요.</p>
-      </div>
-      <div class="block set">
-        <div class="block-head"><h2>${icon('play')}운동 플레이어</h2></div>
-        <label class="switch"><span>음성으로 횟수 세기</span><input type="checkbox" id="voice" ${p.voice ? 'checked' : ''}></label>
-        <p class="muted small">영상은 항상 기본 속도로 재생되고, 한 번 동작이 끝날 때마다 자동으로 횟수를 세요.${isNative() ? '' : ' 운동 중에는 아이폰 무음 스위치를 켜 둬도 음성과 음악이 나와요.'}</p>
-      </div>
-      <div class="block set">
-        <div class="block-head"><h2>${icon('music')}배경음악</h2></div>
-        <div class="chips" id="mStyle">${Object.entries(STYLES).map(([k, v]) => `<button type="button" data-v="${k}" class="${p.music.style === k ? 'on' : ''}">${v.label}</button>`).join('')}</div>
-        <label class="range">볼륨 <input type="range" min="0.1" max="1" step="0.05" value="${p.music.vol}" id="mVol"></label>
-        <div class="row"><button class="btn ghost" data-act="preview">미리 듣기</button>
-          <label class="btn ghost">내 음악 파일<input type="file" accept="audio/*" id="mFile" hidden></label></div>
-        <p class="muted small" id="mFileInfo">기본 음악은 앱이 직접 연주하는 비트라 인터넷 없이도 나와요.</p>
-      </div>
-      <div class="block set">
-        <div class="block-head"><h2>${icon('download')}백업</h2><span class="muted small">${p.lastBackup ? `마지막 백업 ${daysSince(p.lastBackup) === 0 ? '오늘' : daysSince(p.lastBackup) + '일 전'}` : '아직 없음'}</span></div>
-        <p class="muted small">기록·코인·몸 사진을 파일 하나로 저장해요. ${isNative() ? '공유 화면에서 구글 드라이브나 내 파일을 고르세요.' : '공유 화면에서 "파일에 저장"을 고르면 iCloud Drive에 들어가요.'} 7일이 지나면 홈에서 알려 드려요.</p>
-        <div class="row"><button class="btn primary" data-act="export">지금 백업하기</button>
-          <label class="btn ghost">백업 불러오기<input type="file" accept="application/json" id="imp" hidden></label></div>
-      </div>
-      <div class="block set">
-        <div class="block-head"><h2>${icon('download')}오프라인</h2><span class="muted small" id="offStat">확인 중…</span></div>
-        <p class="muted small">운동 영상과 음성(약 ${Math.round((Object.keys(MEDIA).length * 0.45 + 2.2) * 10) / 10}MB)을 미리 받아 두면 인터넷이 없어도 끊김 없이 운동할 수 있어요. 와이파이에서 받으세요.</p>
-        <div class="bar off-bar hidden" id="offBar"><i style="width:0%"></i></div>
-        <button class="btn ghost" data-act="offline">오프라인용으로 모두 받기</button>
-      </div>
-      <div class="block set">
-        <div class="block-head"><h2>${icon('sparkle')}운동량 자동 조절</h2><span class="muted small">지금 ${Math.round((c.adapt || 1) * 100)}%</span></div>
-        <label class="switch"><span>컨디션과 완주 여부로 다음 운동량 조절</span><input type="checkbox" id="autoAdapt" ${p.autoAdapt === false ? '' : 'checked'}></label>
-        <p class="muted small">"힘들었어요"면 10% 줄이고, "가뿐했어요"면 10% 늘려요. 세트를 건너뛰거나 중간에 멈추면 5% 줄여요. 70~140% 안에서 바뀌어요.</p>
-        ${(c.adapt || 1) !== 1 ? '<button class="btn ghost small" data-act="adapt-reset" style="align-self:flex-start">운동량 100%로 되돌리기</button>' : ''}
-      </div>
-      <div class="block set">
-        <div class="block-head"><h2>${icon('dumbbell')}동작 도감</h2></div>
-        <ul class="ex-list">${Object.values(EXERCISES).map((ex) => `<li>${thumb(ex.id)}<div><b>${ex.name}</b><span class="sub">${ex.tips[0]}</span></div><span></span></li>`).join('')}</ul>
-      </div>
-      <div class="block set">
-        <div class="block-head"><h2>${icon('sparkle')}앱 정보</h2></div>
-        <ul class="credits">
-          <li><b>AI 코치 영상</b><span class="muted small">운동 영상 속 인물은 실제 사람이 아니라 생성형 AI(Google Gemini·Veo)로 만든 가상 코치예요.</span></li>
-          <li><b>음성 안내</b><span class="muted small">Microsoft 신경망 음성(SunHi)으로 합성했어요.</span></li>
-          <li><b>배경음악</b><span class="muted small">앱이 직접 연주하는 신스 음악이에요.</span></li>
-          <li><b>글꼴</b><span class="muted small">Pretendard (SIL Open Font License 1.1), Apple SD Gothic Neo</span></li>
-          <li><b>안전 안내</b><span class="muted small">이 앱은 의료 조언을 대신하지 않아요. 지병·부상·임신 중이거나 운동 중 통증·어지러움이 있으면 멈추고 전문가와 상담하세요.</span></li>
-        </ul>
-        <p class="legal-links"><a href="https://can37199-code.github.io/home-workout/terms.html" target="_blank" rel="noopener">이용약관</a><span class="dot"></span><a href="https://can37199-code.github.io/home-workout/privacy.html" target="_blank" rel="noopener">개인정보처리방침</a></p>
-      </div>
-      ${BILL.access().status !== 'owner' ? `<div class="block set">
-        <div class="block-head"><h2>${icon('gift')}이용권</h2><span class="muted small">${{ premium: '평생 이용권 보유', trial: `무료 체험 ${BILL.access().daysLeft}일 남음`, expired: '무료 체험 끝' }[BILL.access().status]}</span></div>
-        <button class="btn ghost" data-act="paywall" style="align-self:flex-start">${BILL.access().status === 'premium' ? '이용권 보기' : `평생 이용권 · ${BILL.PRODUCT.priceLabel}`}</button>
-      </div>` : ''}
-      <div class="block set">
-        <div class="block-head"><h2>${icon('trash')}데이터</h2></div>
-        <button class="btn danger" data-act="reset" style="align-self:flex-start;padding-left:0">모든 기록 지우기</button>
-        <p class="muted small">오늘홈트 1.0.0 · 데이터는 서버로 전송되지 않아요</p>
-      </div>
+    ${sgroup('내 챌린지', [
+      srow({ ico: 'flag', title: `${c.days}일 · ${LEVELS[c.level].label}`, sub: `${dateLabel(c.start)} 시작 · 매일 ${remindLabel(db())}`, act: 'edit', trail: '<span class="strail">바꾸기</span>' }),
+      a.status !== 'owner' ? srow({ ico: 'gift', title: '이용권', sub: { premium: '평생 이용권 보유', trial: `무료 체험 ${a.daysLeft}일 남음`, expired: '무료 체험 끝' }[a.status], act: 'paywall' }) : '',
+    ])}
+    ${sgroup('알림·운동', [
+      isNative()
+        ? srow({ ico: 'bell', title: '매일 운동 알림', sub: '확인하는 중…', id: 'notifyStatus', trail: toggle('notifyOn', false) })
+        : srow({ ico: 'bell', title: '푸시 알림', sub: '매일 저녁 8시쯤', subPage: 'push' }),
+      srow({ ico: 'calendar', title: '캘린더에 운동 일정 넣기', sub: '폰 캘린더에 매일 반복 일정', subPage: 'calendar' }),
+      srow({ ico: 'play', title: '음성으로 횟수 세기', sub: '동작이 끝날 때마다 숫자를 불러 줘요', trail: toggle('voice', p.voice) }),
+      srow({ ico: 'music', title: '배경음악', sub: MUSIC_LABEL(), subPage: 'music' }),
+      srow({ ico: 'sparkle', title: '운동량 자동 조절', sub: `지금 ${adaptPct}% · 컨디션에 맞춰 바뀌어요`, subPage: 'adapt' }),
+    ])}
+    ${sgroup('화면', [`<div class="srow col"><span class="stext"><b>화면 테마</b><span>운동 화면은 항상 어두운 화면이에요</span></span>
+        <div class="seg wide" id="theme">${[['system', '시스템 설정'], ['light', '라이트'], ['dark', '다크']].map(([k, v]) => `<button type="button" data-v="${k}" class="${(p.theme || 'system') === k ? 'on' : ''}">${v}</button>`).join('')}</div></div>`])}
+    ${sgroup('데이터', [
+      srow({ ico: 'download', title: '백업', sub: p.lastBackup ? `마지막 백업 ${daysSince(p.lastBackup) === 0 ? '오늘' : daysSince(p.lastBackup) + '일 전'}` : '아직 백업한 적이 없어요', subPage: 'backup' }),
+      !isNative() ? srow({ ico: 'download', title: '오프라인용으로 받기', sub: '인터넷 없이 운동하기', subPage: 'offline' }) : '',
+      srow({ ico: 'trash', title: '모든 기록 지우기', act: 'reset', danger: true }),
+    ])}
+    ${sgroup('정보', [
+      srow({ ico: 'dumbbell', title: '동작 도감', sub: `${Object.keys(EXERCISES).length}개 동작과 자세 포인트`, subPage: 'library' }),
+      srow({ ico: 'sparkle', title: 'AI 코치·음성·글꼴 안내', subPage: 'about' }),
+      srow({ ico: 'list', title: '이용약관', href: LEGAL.terms }),
+      srow({ ico: 'list', title: '개인정보처리방침', href: LEGAL.privacy }),
+    ])}
+    <p class="version">${wordmark('sm')}<span>버전 1.0.0 · 기록은 이 폰에만 저장돼요</span></p>
 ${testMenuBlock()}
-    </div>
   </section>`;
-  drawThumbs();
-  const on = (act, fn) => app.querySelector(`[data-act="${act}"]`).addEventListener('click', fn);
+  app.querySelectorAll('[data-sub]').forEach((b) => b.addEventListener('click', () => go('settings', b.dataset.sub)));
+  const on = (act, fn) => app.querySelector(`[data-act="${act}"]`)?.addEventListener('click', fn);
   on('edit', () => go('setup'));
-  app.querySelector('[data-act="paywall"]')?.addEventListener('click', () => go('paywall'));
-  bindTestMenu();
-
-  // 앱: 폰 예약 알림
-  if (isNative()) {
-    const st = app.querySelector('#notifyStatus'), tg = app.querySelector('[data-act="notify-toggle"]');
-    const refresh = async () => {
-      const perm = await nativeNotifyPermission();
-      const onNow = p.notify === true && perm === 'granted';
-      st.textContent = perm === 'denied' ? '알림이 꺼져 있어요. 폰 설정 → 애플리케이션 → 오늘홈트 → 알림에서 허용해 주세요.'
-        : onNow ? `켜져 있어요. 매일 ${remindLabel(db())}쯤, 운동 전이면 독려를, 운동 후면 오늘의 성과를 알려 줘요. 시간은 챌린지 설정의 "매일 운동할 시간"을 따라요.`
-        : '꺼져 있어요. 켜면 운동 전에는 독려, 운동 후에는 오늘의 성과를 알려 줘요.';
-      tg.textContent = onNow ? '알림 끄기' : '알림 켜기';
-      tg.className = onNow ? 'btn ghost' : 'btn primary';
-    };
-    refresh();
-    tg.addEventListener('click', async () => {
-      if (p.notify === true && (await nativeNotifyPermission()) === 'granted') p.notify = false;
-      else if (await nativeNotifyEnable()) p.notify = true;
-      else notify('알림 권한을 허용해야 저녁 알림을 받을 수 있어요.');
-      save(); refresh();
-    });
-    app.querySelector('[data-act="notify-test"]').addEventListener('click', async () => {
-      if (!(await nativeShowNow(db()))) notify('먼저 "알림 켜기"로 알림 권한을 허용해 주세요.');
-    });
-  }
-
-  // 푸시 알림 (웹)
-  const pushStatus = app.querySelector('#pushStatus');
-  const showSub = (json) => {
-    app.querySelector('#pushSub').classList.toggle('hidden', !json);
-    app.querySelector('#pushJson').textContent = json || '';
-  };
-  const refreshPush = async () => {
-    if (!pushSupported()) { pushStatus.textContent = '이 브라우저는 푸시 알림을 지원하지 않아요. 크롬에서 홈 화면에 설치한 앱으로 열어 주세요.'; return; }
-    const sub = await currentSubscription().catch(() => null);
-    if (Notification.permission === 'denied') pushStatus.textContent = '알림이 차단돼 있어요. 폰 설정 → 앱 → 크롬(또는 오늘홈트) → 알림에서 허용해 주세요.';
-    else if (sub) pushStatus.textContent = '켜져 있어요. 매일 저녁 8시쯤, 운동 전이면 독려를, 운동 후면 오늘의 성과를 알려 줘요.';
-    else pushStatus.textContent = '꺼져 있어요. 켜면 운동 전에는 독려, 운동 후에는 오늘의 성과를 알려 줘요.';
-    showSub(sub ? JSON.stringify(sub.toJSON()) : '');
-  };
-  if (!isNative()) refreshPush();
-  on('push-on', async () => {
-    try { await enablePush(); await refreshPush(); app.querySelector('#pushSub').open = true; }
-    catch (err) { notify(err.message === 'denied' ? '알림 권한을 허용해야 푸시를 받을 수 있어요.' : '이 브라우저에서는 푸시 알림을 켤 수 없어요.'); }
-  });
-  on('push-test', async () => {
-    if (!(await webShowNow(db()))) notify('먼저 "푸시 알림 켜기"로 알림 권한을 허용해 주세요.');
-  });
-  on('push-copy', async () => {
-    const t = app.querySelector('#pushJson').textContent;
-    try { await navigator.clipboard.writeText(t); toast('구독 정보를 복사했어요'); }
-    catch { const r = document.createRange(); r.selectNodeContents(app.querySelector('#pushJson')); getSelection().removeAllRanges(); getSelection().addRange(r); toast('길게 눌러 복사하세요'); }
-  });
-  on('push-off', async () => {
-    if (!await ask('푸시 알림 끄기', '이 폰의 푸시 구독을 해제할까요? 다시 켜면 새 구독 정보를 등록해야 해요.', '끄기', { danger: true })) return;
-    await disablePush(); refreshPush();
-  });
-  on('ics', () => download(`ohometeu-${c.start}.ics`, icsFile(c), 'text/calendar'));
-  on('export', async () => { if (await backupNow()) { toast('백업했어요'); settings(); } });
-  app.querySelector('#autoAdapt').addEventListener('change', (e) => { p.autoAdapt = e.target.checked; save(); });
-  app.querySelector('[data-act="adapt-reset"]')?.addEventListener('click', () => { c.adapt = 1; c.adaptNote = null; save(); settings(); });
-  const offStat = app.querySelector('#offStat');
-  const showOff = ({ have, total }) => { offStat.textContent = have >= total ? '모두 받음' : `${have} / ${total}개 받음`; };
-  offlineStatus().then(showOff);
-  on('offline', async (e) => {
-    const btn = e.currentTarget; btn.disabled = true; btn.textContent = '받는 중…';
-    const bar = app.querySelector('#offBar'); bar.classList.remove('hidden');
-    const failed = await downloadAll((n, total) => { bar.firstElementChild.style.width = `${(n / total) * 100}%`; offStat.textContent = `${n} / ${total}개 받음`; });
-    btn.disabled = false; btn.textContent = failed ? '다시 시도' : '다시 받기';
-    showOff(await offlineStatus());
-    toast(failed ? `${failed}개를 받지 못했어요. 인터넷 연결을 확인해 주세요.` : '오프라인 준비 완료');
-  });
+  on('paywall', () => go('paywall'));
   on('reset', () => {
     ask('모든 기록 지우기', '정말 모든 기록과 설정을 지울까요? 되돌릴 수 없어요. 먼저 백업 파일을 저장해 두는 걸 권해요.', '모두 지우기', { danger: true })
       .then((y) => { if (y) { resetAll(); go('setup'); } });
   });
+  bindTestMenu();
   app.querySelector('#voice').addEventListener('change', (e) => { p.voice = e.target.checked; save(); });
   app.querySelector('#theme').addEventListener('click', (e) => {
     const b = e.target.closest('button'); if (!b) return;
@@ -1226,43 +1109,171 @@ ${testMenuBlock()}
     app.querySelectorAll('#theme button').forEach((x) => x.classList.toggle('on', x === b));
   });
 
-  // 배경음악
-  const m = p.music;
-  let previewing = false;
-  const previewBtn = app.querySelector('[data-act="preview"]');
-  const preview = async (force) => {
-    if (previewing && !force) { music.stop(); stopPlaybackMode(); previewing = false; previewBtn.textContent = '미리 듣기'; return; }
-    startPlaybackMode();
-    await music.start(m.style, m.vol);
-    previewing = m.style !== 'off'; previewBtn.textContent = previewing ? '멈추기' : '미리 듣기';
-  };
-  previewBtn.addEventListener('click', () => preview(false));
-  app.querySelector('#mStyle').addEventListener('click', (e) => {
-    const b = e.target.closest('button'); if (!b) return;
-    m.style = b.dataset.v; save();
-    app.querySelectorAll('#mStyle button').forEach((x) => x.classList.toggle('on', x === b));
-    if (previewing || m.style !== 'off') preview(true);
-  });
-  app.querySelector('#mVol').addEventListener('input', (e) => { m.vol = Number(e.target.value); save(); music.vol = m.vol; music.setSoft(false); });
-  const info = app.querySelector('#mFileInfo');
-  loadBlob('myMusic').then((b) => { if (b) info.textContent = `내 음악: ${b.name || '저장된 파일'} (${(b.size / 1048576).toFixed(1)}MB)`; }).catch(() => {});
-  app.querySelector('#mFile').addEventListener('change', async (e) => {
-    const f = e.target.files[0]; if (!f) return;
-    try {
-      await saveBlob('myMusic', f);
-      m.style = 'mine'; save();
-      notify(`"${f.name}"을(를) 운동 음악으로 정했어요.`);
-      settings();
-    } catch { notify('음악 파일을 저장하지 못했어요. 파일이 너무 크면 더 작은 파일로 시도해 주세요.'); }
-  });
-  app.querySelector('#imp').addEventListener('change', async (e) => {
-    const f = e.target.files[0]; if (!f) return;
-    try {
-      const d = JSON.parse(await f.text());
-      if (!d.logs || !('challenge' in d)) throw new Error();
-      if (await ask('백업 불러오기', '지금 기록을 백업 파일 내용으로 바꿀까요? 몸 사진도 함께 돌아와요.', '바꾸기')) { await restoreFrom(d); applyTheme(); go('home'); }
-    } catch { notify('백업 파일을 읽지 못했어요.'); }
-  });
+  // 앱: 폰 예약 알림 (켜기/끄기 스위치)
+  if (isNative()) {
+    const st = app.querySelector('#notifyStatus'), sw = app.querySelector('#notifyOn');
+    const refresh = async () => {
+      const perm = await nativeNotifyPermission();
+      const onNow = p.notify === true && perm === 'granted';
+      sw.checked = onNow;
+      st.textContent = perm === 'denied' ? '폰 설정 → 애플리케이션 → 오늘홈트 → 알림에서 허용해 주세요'
+        : onNow ? `매일 ${remindLabel(db())}쯤 · 운동 전엔 독려, 운동 후엔 성과` : '꺼져 있어요';
+    };
+    refresh();
+    sw.addEventListener('change', async () => {
+      if (!sw.checked) p.notify = false;
+      else if (await nativeNotifyEnable()) { p.notify = true; nativeShowNow(db()).catch(() => {}); }
+      else notify('알림 권한을 허용해야 운동 알림을 받을 수 있어요.');
+      save(); refresh();
+    });
+  }
+}
+
+function settingsSub(sub) {
+  const c = db().challenge;
+  const p = db().prefs;
+  const TITLES = { push: '푸시 알림', calendar: '캘린더에 운동 일정 넣기', music: '배경음악', adapt: '운동량 자동 조절', backup: '백업', offline: '오프라인용으로 받기', library: '동작 도감', about: 'AI 코치·음성·글꼴 안내' };
+  let body = '';
+  if (sub === 'push') body = `
+      <p class="muted" id="pushStatus">확인하는 중…</p>
+      <div class="row"><button class="btn primary" data-act="push-on">푸시 알림 켜기</button><button class="btn ghost" data-act="push-test">알림 미리보기</button></div>
+      <details class="hidden" id="pushSub">
+        <summary class="small">구독 정보 · 처음 한 번 등록</summary>
+        <p class="small">아래 구독 정보를 복사해서 Claude에게 보내 주세요. 한 번 등록하면 매일 8시에 알림이 와요. 알림을 껐다 다시 켜면 새로 등록해야 해요.</p>
+        <pre class="sub-json" id="pushJson"></pre>
+        <div class="row"><button class="btn ghost" data-act="push-copy">구독 정보 복사</button><button class="btn danger" data-act="push-off">알림 끄기</button></div>
+      </details>`;
+  if (sub === 'calendar') body = `
+      <p class="muted">폰 캘린더에 매일 ${c.remindAt} 운동 일정을 챌린지 기간(${c.days}일) 동안 반복해서 넣어요. 앱 알림과 함께 쓰면 잊지 않기 좋아요.</p>
+      <div class="row"><a class="btn primary" target="_blank" rel="noopener" href="${gcalLink(c)}">구글 캘린더에 추가</a>
+        <button class="btn ghost" data-act="ics">다른 캘린더용 파일</button></div>`;
+  if (sub === 'music') body = `
+      <div class="chips" id="mStyle">${Object.entries(STYLES).map(([k, v]) => `<button type="button" data-v="${k}" class="${p.music.style === k ? 'on' : ''}">${v.label}</button>`).join('')}</div>
+      <label class="range">볼륨 <input type="range" min="0.1" max="1" step="0.05" value="${p.music.vol}" id="mVol"></label>
+      <div class="row"><button class="btn ghost" data-act="preview">미리 듣기</button>
+        <label class="btn ghost">내 음악 파일<input type="file" accept="audio/*" id="mFile" hidden></label></div>
+      <p class="muted small" id="mFileInfo">기본 음악은 앱이 직접 연주하는 비트라 인터넷 없이도 나와요. 운동 중에도 음악 버튼으로 바꿀 수 있어요.</p>`;
+  if (sub === 'adapt') body = `
+      <label class="switch"><span>컨디션과 완주 여부로 다음 운동량 조절</span><input type="checkbox" id="autoAdapt" ${p.autoAdapt === false ? '' : 'checked'}></label>
+      <p class="muted">"힘들었어요"면 10% 줄이고, "가뿐했어요"면 10% 늘려요. 세트를 건너뛰거나 중간에 멈추면 5% 줄여요. 70~140% 안에서 바뀌어요.</p>
+      <p><b>지금 운동량 ${Math.round((c.adapt || 1) * 100)}%</b></p>
+      ${(c.adapt || 1) !== 1 ? '<button class="btn ghost" data-act="adapt-reset">운동량 100%로 되돌리기</button>' : ''}`;
+  if (sub === 'backup') body = `
+      <p class="muted">기록·코인·몸 사진을 파일 하나로 저장해요. ${isNative() ? '공유 화면에서 구글 드라이브나 내 파일을 고르세요.' : '공유 화면에서 "파일에 저장"을 고르면 iCloud Drive에 들어가요.'} 7일이 지나면 홈에서 알려 드려요.</p>
+      <div class="row"><button class="btn primary" data-act="export">지금 백업하기</button>
+        <label class="btn ghost">백업 불러오기<input type="file" accept="application/json" id="imp" hidden></label></div>`;
+  if (sub === 'offline') body = `
+      <p class="muted">운동 영상과 음성(약 ${Math.round((Object.keys(MEDIA).length * 0.45 + 2.2) * 10) / 10}MB)을 미리 받아 두면 인터넷이 없어도 끊김 없이 운동할 수 있어요. 와이파이에서 받으세요.</p>
+      <p><b id="offStat">확인 중…</b></p>
+      <div class="bar off-bar hidden" id="offBar"><i style="width:0%"></i></div>
+      <button class="btn primary" data-act="offline">오프라인용으로 모두 받기</button>`;
+  if (sub === 'library') body = `<ul class="ex-list">${Object.values(EXERCISES).map((ex) => `<li>${thumb(ex.id)}<div><b>${ex.name}</b><span class="sub">${ex.tips.join(' · ')}</span></div><span></span></li>`).join('')}</ul>`;
+  if (sub === 'about') body = `
+      <ul class="credits">
+        <li><b>AI 코치 영상</b><span class="muted small">운동 영상 속 인물은 실제 사람이 아니라 생성형 AI(Google Gemini·Veo)로 만든 가상 코치예요.</span></li>
+        <li><b>음성 안내</b><span class="muted small">Microsoft 신경망 음성(SunHi)으로 합성했어요.</span></li>
+        <li><b>배경음악</b><span class="muted small">앱이 직접 연주하는 신스 음악이에요.</span></li>
+        <li><b>글꼴</b><span class="muted small">Pretendard (SIL Open Font License 1.1), Apple SD Gothic Neo</span></li>
+        <li><b>안전 안내</b><span class="muted small">이 앱은 의료 조언을 대신하지 않아요. 지병·부상·임신 중이거나 운동 중 통증·어지러움이 있으면 멈추고 전문가와 상담하세요.</span></li>
+      </ul>`;
+  app.innerHTML = `
+  <section class="page settings-page">
+    <header class="sub-head"><button class="icon-btn" data-act="back" aria-label="설정으로 돌아가기">${icon('prev')}</button><h1>${TITLES[sub]}</h1></header>
+    <div class="block sub-body">${body}</div>
+  </section>`;
+  drawThumbs();
+  const on = (act, fn) => app.querySelector(`[data-act="${act}"]`)?.addEventListener('click', fn);
+  on('back', () => go('settings'));
+
+  if (sub === 'push') {
+    const pushStatus = app.querySelector('#pushStatus');
+    const showSub = (json) => {
+      app.querySelector('#pushSub').classList.toggle('hidden', !json);
+      app.querySelector('#pushJson').textContent = json || '';
+    };
+    const refreshPush = async () => {
+      if (!pushSupported()) { pushStatus.textContent = '이 브라우저는 푸시 알림을 지원하지 않아요. 홈 화면에 설치한 앱으로 열어 주세요.'; return; }
+      const s = await currentSubscription().catch(() => null);
+      if (Notification.permission === 'denied') pushStatus.textContent = '알림이 차단돼 있어요. 폰 설정에서 오늘홈트 알림을 허용해 주세요.';
+      else if (s) pushStatus.textContent = '켜져 있어요. 매일 저녁 8시쯤, 운동 전이면 독려를, 운동 후면 오늘의 성과를 알려 줘요.';
+      else pushStatus.textContent = '꺼져 있어요. 켜면 운동 전에는 독려, 운동 후에는 오늘의 성과를 알려 줘요.';
+      showSub(s ? JSON.stringify(s.toJSON()) : '');
+    };
+    refreshPush();
+    on('push-on', async () => {
+      try { await enablePush(); await refreshPush(); app.querySelector('#pushSub').open = true; }
+      catch (err) { notify(err.message === 'denied' ? '알림 권한을 허용해야 푸시를 받을 수 있어요.' : '이 브라우저에서는 푸시 알림을 켤 수 없어요.'); }
+    });
+    on('push-test', async () => { if (!(await webShowNow(db()))) notify('먼저 "푸시 알림 켜기"로 알림 권한을 허용해 주세요.'); });
+    on('push-copy', async () => {
+      const t = app.querySelector('#pushJson').textContent;
+      try { await navigator.clipboard.writeText(t); toast('구독 정보를 복사했어요'); }
+      catch { const r = document.createRange(); r.selectNodeContents(app.querySelector('#pushJson')); getSelection().removeAllRanges(); getSelection().addRange(r); toast('길게 눌러 복사하세요'); }
+    });
+    on('push-off', async () => {
+      if (!await ask('푸시 알림 끄기', '이 폰의 푸시 구독을 해제할까요? 다시 켜면 새 구독 정보를 등록해야 해요.', '끄기', { danger: true })) return;
+      await disablePush(); refreshPush();
+    });
+  }
+  if (sub === 'calendar') on('ics', () => download(`ohometeu-${c.start}.ics`, icsFile(c), 'text/calendar'));
+  if (sub === 'adapt') {
+    app.querySelector('#autoAdapt').addEventListener('change', (e) => { p.autoAdapt = e.target.checked; save(); });
+    on('adapt-reset', () => { c.adapt = 1; c.adaptNote = null; save(); settings('adapt'); });
+  }
+  if (sub === 'backup') {
+    on('export', async () => { if (await backupNow()) { toast('백업했어요'); settings('backup'); } });
+    app.querySelector('#imp').addEventListener('change', async (e) => {
+      const f = e.target.files[0]; if (!f) return;
+      try {
+        const d = JSON.parse(await f.text());
+        if (!d.logs || !('challenge' in d)) throw new Error();
+        if (await ask('백업 불러오기', '지금 기록을 백업 파일 내용으로 바꿀까요? 몸 사진도 함께 돌아와요.', '바꾸기')) { await restoreFrom(d); applyTheme(); go('home'); }
+      } catch { notify('백업 파일을 읽지 못했어요.'); }
+    });
+  }
+  if (sub === 'offline') {
+    const offStat = app.querySelector('#offStat');
+    const showOff = ({ have, total }) => { offStat.textContent = have >= total ? '모두 받았어요' : `${have} / ${total}개 받음`; };
+    offlineStatus().then(showOff);
+    on('offline', async (e) => {
+      const btn = e.currentTarget; btn.disabled = true; btn.textContent = '받는 중…';
+      const bar = app.querySelector('#offBar'); bar.classList.remove('hidden');
+      const failed = await downloadAll((n, total) => { bar.firstElementChild.style.width = `${(n / total) * 100}%`; offStat.textContent = `${n} / ${total}개 받음`; });
+      btn.disabled = false; btn.textContent = failed ? '다시 시도' : '다시 받기';
+      showOff(await offlineStatus());
+      toast(failed ? `${failed}개를 받지 못했어요. 인터넷 연결을 확인해 주세요.` : '오프라인 준비 완료');
+    });
+  }
+  if (sub === 'music') {
+    const m = p.music;
+    let previewing = false;
+    const previewBtn = app.querySelector('[data-act="preview"]');
+    const preview = async (force) => {
+      if (previewing && !force) { music.stop(); stopPlaybackMode(); previewing = false; previewBtn.textContent = '미리 듣기'; return; }
+      startPlaybackMode();
+      await music.start(m.style, m.vol);
+      previewing = m.style !== 'off'; previewBtn.textContent = previewing ? '멈추기' : '미리 듣기';
+    };
+    previewBtn.addEventListener('click', () => preview(false));
+    app.querySelector('#mStyle').addEventListener('click', (e) => {
+      const b = e.target.closest('button'); if (!b) return;
+      m.style = b.dataset.v; save();
+      app.querySelectorAll('#mStyle button').forEach((x) => x.classList.toggle('on', x === b));
+      if (previewing || m.style !== 'off') preview(true);
+    });
+    app.querySelector('#mVol').addEventListener('input', (e) => { m.vol = Number(e.target.value); save(); music.vol = m.vol; music.setSoft(false); });
+    const info = app.querySelector('#mFileInfo');
+    loadBlob('myMusic').then((b) => { if (b) info.textContent = `내 음악: ${b.name || '저장된 파일'} (${(b.size / 1048576).toFixed(1)}MB)`; }).catch(() => {});
+    app.querySelector('#mFile').addEventListener('change', async (e) => {
+      const f = e.target.files[0]; if (!f) return;
+      try {
+        await saveBlob('myMusic', f);
+        m.style = 'mine'; save();
+        notify(`"${f.name}"을(를) 운동 음악으로 정했어요.`);
+        settings('music');
+      } catch { notify('음악 파일을 저장하지 못했어요. 파일이 너무 크면 더 작은 파일로 시도해 주세요.'); }
+    });
+  }
 }
 
 function gcalLink(c) {
@@ -1333,9 +1344,11 @@ if (isNative()) {
     if (modal) { modal.dispatchEvent(new MouseEvent('click', { bubbles: true })); return true; }
     if (currentView === 'player') { app.querySelector(app.querySelector('#pPause')?.classList.contains('hidden') ? '[data-act="pause"]' : '[data-act="exit"]')?.click(); return true; }
     if (currentView === 'health') { go('welcome'); return true; }
+    if (currentView === 'settings' && app.querySelector('.sub-head')) { go('settings'); return true; }
     if (currentView !== 'home' && db().challenge) { go('home'); return true; }
     return false;
   });
 }
 navigator.storage?.persist?.();
 go(db().challenge ? 'home' : 'setup');
+hideSplash();

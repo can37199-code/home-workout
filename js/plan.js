@@ -14,10 +14,10 @@ export const LEVELS = {
 export const ADAPT_MIN = 0.7, ADAPT_MAX = 1.4;
 
 const TEMPLATES = {
-  A: { title: '하체 집중', tag: 'Lower', items: ['squat', 'lunge', 'gluteBridge', 'jumpingJack'] },
-  B: { title: '상체·코어', tag: 'Upper · Core', items: ['pushup', 'plank', 'crunch', 'legRaise'] },
-  C: { title: '전신 유산소', tag: 'Cardio', items: ['jumpingJack', 'highKnees', 'mountainClimber', 'squat', 'burpee'] },
-  R: { title: '가벼운 회복', tag: 'Recovery', items: ['gluteBridge', 'plank', 'crunch'] },
+  A: { title: '하체 집중', tag: '하체', items: ['squat', 'lunge', 'gluteBridge', 'jumpingJack'] },
+  B: { title: '상체·코어', tag: '상체·코어', items: ['pushup', 'plank', 'crunch', 'legRaise'] },
+  C: { title: '전신 유산소', tag: '유산소', items: ['jumpingJack', 'highKnees', 'mountainClimber', 'squat', 'burpee'] },
+  R: { title: '가벼운 회복', tag: '회복', items: ['gluteBridge', 'plank', 'crunch'] },
 };
 const CYCLE = ['A', 'B', 'C', 'A', 'B', 'C', 'R'];
 
@@ -62,10 +62,10 @@ export function miniPlan(plan) {
     const ex = EXERCISES[it.id];
     return { ...it, sets: 1, target: targetFor(ex, (it.sec || 30) * 0.6) };
   });
-  return { ...plan, title: '7분 미니 운동', tag: 'Mini', rest: 20, items, mini: true };
+  return { ...plan, title: '7분 미니 운동', tag: '미니', rest: 20, items, mini: true };
 }
 
 // 최고 기록 도전: 한 동작을 할 수 있는 만큼 1세트
 export function challengePlan(id) {
-  return { key: 'PR', title: '최고 기록 도전', tag: 'Challenge', rest: 0, items: [{ id, sets: 1, target: Infinity }] };
+  return { key: 'PR', title: '최고 기록 도전', tag: '도전', rest: 0, items: [{ id, sets: 1, target: Infinity }] };
 }
