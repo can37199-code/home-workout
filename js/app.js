@@ -11,6 +11,7 @@ import { startPlaybackMode, stopPlaybackMode } from './audio.js';
 import { icon } from './icons.js';
 import * as RW from './rewards.js';
 import * as BILL from './billing.js';
+import { drawShareCard, shareCard } from './share.js';
 import { FLAGS } from './flags.js';
 import { PUSH_HOUR, pushSupported, currentSubscription, enablePush, disablePush, showNow as webShowNow } from './push.js';
 import { hideSplash, remindAt, remindLabel, nativeShareFile, setThemeBars, isNative, nativeNotifyPermission, nativeNotifyEnable, nativeReschedule, nativeShowNow, onBackButton, onResume } from './native.js';
@@ -436,6 +437,16 @@ function missionsBlock(compact = true) {
   </div>`;
 }
 
+// 홈용 한 줄 미션 요약 (보상을 받을 수 있을 때만 전체 카드)
+function missionsLine() {
+  const w = RW.weeklyMissions();
+  if (w.allDone && !w.claimed) return missionsBlock();
+  const n = w.list.filter((m) => m.done).length;
+  return `<button type="button" class="mission-line" data-go-to="rewards" data-anchor="challenge">${icon('target')}
+    <span class="ml-text"><b>이번 주 미션 ${n} / ${w.list.length}</b><small>${w.claimed ? '이번 주 보상을 받았어요' : '모두 하면 +200 코인'}</small></span>
+    <span class="ml-bars">${w.list.map((m) => `<i style="--p:${Math.min(1, m.value / m.target)}"></i>`).join('')}</span>${icon('next')}</button>`;
+}
+
 async function claimWeeklyUI() {
   const res = RW.claimWeekly();
   if (!res) return;
@@ -503,7 +514,7 @@ function home() {
            <button class="btn ghost big" data-act="start" data-date="${t}"><span>한 번 더 하기</span>${icon('arrow')}</button>`
         : `<p class="cheer">${comeback ? '다시 왔네요. 오늘 끝내면 기본 코인이 2배예요.' : CHEERS[i % CHEERS.length]}</p>
            <button class="btn primary big" data-act="start" data-date="${t}"><span>${log?.partial ? '이어서 다시 하기' : '오늘 운동 시작'}</span><span class="btn-reward">${icon('coin')}+${preview}</span></button>
-           ${miniLeft ? `<button class="btn link-btn" data-act="mini" data-date="${t}">컨디션이 안 좋다면 7분 미니 운동으로 연속 기록 지키기 · 이번 주 1번 남음</button>` : ''}`}
+           ${miniLeft ? `<button class="btn ghost mini-btn" data-act="mini" data-date="${t}"><span>컨디션이 안 좋다면 <b>7분 미니 운동</b></span><small>이번 주 1번</small></button>` : ''}`}
     </div>
 
     ${usedShields ? `<div class="note good"><b>스트릭 방어권 ${usedShields}개를 썼어요</b><p class="muted">놓친 날을 메워서 연속 기록이 이어져요. 남은 방어권 ${db().rewards.shields}개.</p></div>` : ''}
@@ -514,7 +525,7 @@ function home() {
     ${missedY ? `<div class="note"><b>어제 Day ${yi + 1}을 놓쳤어요</b><p class="muted">오늘 안에 보충하면 연속 기록이 이어져요.</p>
       <button class="btn ghost" data-act="start" data-date="${y}">어제 운동 보충하기</button></div>` : ''}
 
-    ${missionsBlock()}
+    ${missionsLine()}
 
     ${isChallengeDay ? `<div class="note good"><b>오늘은 도전 데이</b><p class="muted">가벼운 회복 루틴을 끝내고, 한 동작으로 최고 기록에 도전해 보세요. 기록을 깨면 +50 코인.</p>
       <button class="btn ghost" data-go-to="rewards" data-anchor="pr">${icon('trophy')} 최고 기록 도전하기</button></div>` : ''}
@@ -626,6 +637,7 @@ function finish({ date, r, award }) {
       <div><b><span data-count="${total}">${total}</span></b><span>총 횟수</span></div>
       <div><b>${st}<small>일</small></b><span>연속 기록</span></div>
     </div>
+    <button class="btn ghost big share-btn rise" data-act="share" type="button"><span>오늘 기록 이미지로 공유하기</span>${icon('share')}</button>
 
     <div class="block rise">
       <div class="block-head"><h2>${icon('coin')}오늘 받은 보상</h2><span class="num earn">${icon('coin')} +<span data-count="${award.coins}">${award.coins}</span></span></div>
@@ -656,12 +668,22 @@ function finish({ date, r, award }) {
     if (!b || app.querySelector('.card-flip.flipped')) return;
     const card = RW.drawCard(date);
     if (!card) return;
-    const tierName = card.tier === 'legend' ? 'Legend' : card.tier === 'rare' ? 'Rare' : 'Common';
+    const tierName = card.tier === 'legend' ? '전설' : card.tier === 'rare' ? '희귀' : '일반';
     b.querySelector('.front').innerHTML = `<small>${tierName}</small><b>${card.label}</b>`;
     b.classList.add('flipped', card.tier);
     app.querySelectorAll('.card-flip').forEach((x) => { if (x !== b) x.classList.add('dim'); });
     app.querySelector('#cardMsg').textContent = card.tier === 'legend' ? '전설 카드! 오늘 운이 좋네요.' : card.tier === 'rare' ? '희귀 카드를 뽑았어요.' : '내일 또 뽑을 수 있어요.';
     if (card.badges?.length) toast(`새 배지: ${card.badges.map((x) => x.name).join(', ')}`);
+  });
+  app.querySelector('[data-act="share"]').addEventListener('click', async (e) => {
+    const btn = e.currentTarget; btn.disabled = true;
+    try {
+      const c = db().challenge;
+      const done = Array.from({ length: c.days }, (_, k) => !!db().logs[addDays(c.start, k)]?.done);
+      const blob = await drawShareCard({ day: dayIndex(date) + 1, days: c.days, done, min: Math.max(1, Math.round(r.sec / 60)), kcal: r.kcal, total, streak: st, title: dayPlan(c, dayIndex(date)).title, dateLabel: stamp(date) });
+      await shareCard(blob, `오늘홈트-day${dayIndex(date) + 1}.png`);
+    } catch { notify('이미지를 만들지 못했어요. 잠시 후 다시 시도해 주세요.'); }
+    btn.disabled = false;
   });
   app.querySelector('#cond').addEventListener('click', (e) => {
     const b = e.target.closest('button'); if (!b) return;
@@ -853,7 +875,12 @@ async function shrinkPhoto(file) {
   return new Promise((res) => cv.toBlob(res, 'image/jpeg', 0.85));
 }
 
+// 보상 화면 탭: 보상(코인·교환) / 도전(미션·기록·변화) / 배지
+const RTABS = [['reward', '보상'], ['challenge', '도전·기록'], ['badge', '배지']];
+let rewardsTab = 'reward';
 function rewards(anchor) {
+  if (anchor === 'pr' || anchor === 'report' || anchor === 'challenge') rewardsTab = 'challenge';
+  else if (RTABS.some(([k]) => k === anchor)) rewardsTab = anchor;
   const r = db().rewards; const c = db().challenge;
   const L = RW.levelInfo();
   const photoDays = Object.keys(r.photos).sort();
@@ -895,8 +922,9 @@ function rewards(anchor) {
   app.innerHTML = `
   <section class="page">
     <header class="page-head"><h1>보상</h1></header>
+    <div class="seg wide rtabs" id="rTabs" role="tablist">${RTABS.map(([k, v]) => `<button type="button" role="tab" data-tab-btn="${k}" class="${rewardsTab === k ? 'on' : ''}">${v}</button>`).join('')}</div>
 
-    <div class="wallet">
+    <div class="wallet" data-tab="reward">
       <div class="wallet-coins"><span class="eyebrow">코인</span><b class="num" data-count="${r.coins}">${r.coins.toLocaleString()}</b></div>
       <div class="wallet-side">
         <div><span class="eyebrow">레벨</span><b class="num">${L.lv}</b><small>${L.titleKo}</small></div>
@@ -906,7 +934,7 @@ function rewards(anchor) {
       <p class="muted small">방어권은 7일 연속할 때마다 1개씩 받아요(최대 2개). 하루를 놓치면 이틀 뒤 자동으로 써서 연속 기록을 지켜 줘요.</p>
     </div>
 
-    <div class="block">
+    <div class="block" data-tab="reward">
       <div class="block-head"><h2>${icon('gift')}내가 정한 보상</h2><span class="muted small">코인으로 교환</span></div>
       <ul class="coupons">${coupons}</ul>
       <form id="cpForm" class="cp-form">
@@ -919,19 +947,19 @@ function rewards(anchor) {
       <p class="muted small">하루 완주로 보통 150~250 코인을 받아요. 일주일이면 1,000~1,500 코인 정도예요.</p>
     </div>
 
-    <div class="block">
+    <div class="block flat" data-tab="reward">
       <div class="block-head"><h2>${icon('box')}보상함</h2><span class="muted small">교환한 보상</span></div>
       ${redeemed}
     </div>
 
-    ${missionsBlock(false)}
+    <div class="tabwrap" data-tab="challenge">${missionsBlock(false)}</div>
 
-    <div class="block t-teal" id="pr">
+    <div class="block t-teal" id="pr" data-tab="challenge">
       <div class="block-head"><h2>${icon('trophy')}최고 기록 도전</h2><span class="muted small">기록을 깨면 +50 코인</span></div>
       <ul class="ex-list pr-list">${prRows}</ul>
     </div>
 
-    <div class="block t-violet" id="report">
+    <div class="block t-violet" id="report" data-tab="challenge">
       <div class="block-head"><h2>${icon('camera')}변화 리포트</h2><span class="muted small">사진은 이 폰에만 저장돼요</span></div>
       <div class="compare">
         <figure><div class="ph" id="phFirst">${firstPhoto ? '' : '<span>첫 사진</span>'}</div><figcaption>${firstPhoto ? `처음 · ${dateShort(firstPhoto)}` : '처음'}</figcaption></figure>
@@ -942,18 +970,25 @@ function rewards(anchor) {
       <p class="muted small">Day 1, 7, 14, 30에 같은 자리·같은 각도로 찍으면 변화가 잘 보여요. 매주 첫 사진은 +30 코인.</p>
     </div>
 
-    <div class="block">
+    <div class="block" data-tab="badge">
       <div class="block-head"><h2>${icon('medal')}배지</h2><span class="muted small">${badgeCount} / ${RW.BADGES.length}</span></div>
       <ul class="badges">${badges}</ul>
     </div>
 
-    <div class="block">
+    <div class="block flat" data-tab="reward">
       <div class="block-head"><h2>${icon('clock')}최근 적립</h2></div>
       ${ledger ? `<ul class="ledger">${ledger}</ul>` : '<p class="muted small">운동을 마치면 여기에 쌓여요.</p>'}
     </div>
   </section>`;
   drawThumbs();
   bindCommon(rewards);
+  const showTab = (t) => {
+    rewardsTab = t;
+    app.querySelectorAll('[data-tab]').forEach((el) => el.classList.toggle('hidden', el.dataset.tab !== t));
+    app.querySelectorAll('[data-tab-btn]').forEach((b) => { b.classList.toggle('on', b.dataset.tabBtn === t); b.setAttribute('aria-selected', b.dataset.tabBtn === t); });
+  };
+  showTab(rewardsTab);
+  app.querySelector('#rTabs').addEventListener('click', (e) => { const b = e.target.closest('[data-tab-btn]'); if (b) { showTab(b.dataset.tabBtn); window.scrollTo(0, 0); } });
 
   // 사진 표시
   (async () => {
@@ -1003,7 +1038,7 @@ function rewards(anchor) {
   app.querySelectorAll('[data-used]').forEach((b) => b.addEventListener('click', () => { RW.toggleUsed(b.dataset.used); rewards(); }));
   app.querySelectorAll('[data-pr]').forEach((b) => b.addEventListener('click', () => go('player', { pr: b.dataset.pr })));
 
-  if (anchor) requestAnimationFrame(() => app.querySelector('#' + anchor)?.scrollIntoView({ block: 'start' }));
+  if (anchor === 'pr' || anchor === 'report') requestAnimationFrame(() => app.querySelector('#' + anchor)?.scrollIntoView({ block: 'start' }));
 }
 
 // ---------- 통계 ----------
@@ -1033,14 +1068,16 @@ function stats() {
       <div><b>${dw == null ? '–' : (dw > 0 ? '+' : '') + dw.toFixed(1)}<small>kg</small></b><span>체중 변화</span></div>
     </div>
     <div class="block">
-      <div class="block-head"><h2>${icon('scale')}체중</h2>${c.goalWeight ? `<span class="muted small">목표 ${c.goalWeight}kg</span>` : ''}</div>
+      <div class="block-head"><h2>${icon('scale')}체중</h2>
+        <div class="seg mini" id="wRange"><button type="button" data-v="fit" class="${weightRange === 'fit' ? 'on' : ''}">기록 기간</button><button type="button" data-v="all" class="${weightRange === 'all' ? 'on' : ''}">챌린지 전체</button></div></div>
+      ${w0 && wNow ? `<p class="w-sum">시작 <b>${w0}</b> → 지금 <b>${wNow}kg</b> <span class="${dw <= 0 ? 'good' : 'bad'}">(${(dw > 0 ? '+' : '') + dw.toFixed(1)})</span>${c.goalWeight ? ` · 목표까지 <b>${Math.max(0, wNow - c.goalWeight).toFixed(1)}kg</b>` : ''}</p>` : ''}
       ${weightChart(c)}
       <form id="wf" class="inline-form">
         <input type="date" id="wd" value="${today()}" aria-label="날짜"><input type="number" step="0.1" inputmode="decimal" id="wv" placeholder="kg" aria-label="체중">
         <button class="btn primary" type="submit">기록</button>
       </form>
     </div>
-    <div class="block">
+    <div class="block flat">
       <div class="block-head"><h2>${icon('stats')}동작별 누적</h2></div>
       ${Object.keys(reps).length ? `<ul class="rep-list">${Object.entries(reps).sort((a, b) => b[1] - a[1]).map(([id, n]) =>
         `<li><span>${EXERCISES[id].name}</span><b>${n.toLocaleString()}<span class="muted small"> ${EXERCISES[id].type === 'hold' ? '초' : '회'}</span></b>
@@ -1048,6 +1085,7 @@ function stats() {
         : '<p class="muted">아직 기록이 없어요. 첫 운동을 마치면 여기에 쌓여요.</p>'}
     </div>
   </section>`;
+  app.querySelector('#wRange').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { weightRange = b.dataset.v; stats(); } });
   app.querySelector('#wf').addEventListener('submit', (e) => {
     e.preventDefault();
     const v = Number(app.querySelector('#wv').value);
@@ -1056,27 +1094,38 @@ function stats() {
   });
 }
 
+// 체중 그래프: 기본은 기록이 있는 기간에 맞춰 크게(fit), 바꾸면 챌린지 전체(all). 세로축은 기록 범위에 맞춘다.
+let weightRange = 'fit';
 function weightChart(c) {
   const pts = Object.entries(db().weights).sort(([a], [b]) => (a < b ? -1 : 1));
-  if (pts.length < 1) return '<p class="muted">체중을 기록하면 그래프가 그려져요.</p>';
-  const W = 340, H = 160, P = 30;
-  const vals = pts.map(([, v]) => v).concat(c.goalWeight ? [c.goalWeight] : []);
-  const lo = Math.floor(Math.min(...vals) - 0.5), hi = Math.ceil(Math.max(...vals) + 0.5);
-  const span = Math.max(c.days - 1, diffDays(c.start, pts.at(-1)[0]), 1);
-  const x = (d) => P + (clamp(diffDays(c.start, d), 0, span) / span) * (W - P - 10);
-  const y = (v) => 10 + (1 - (v - lo) / (hi - lo)) * (H - 34);
+  if (pts.length < 1) return `<div class="empty-state">${icon('scale')}<b>체중을 기록하면 그래프가 그려져요</b><span>아래에 오늘 체중을 넣어 보세요. 일주일에 한두 번이면 충분해요.</span></div>`;
+  const W = 340, H = 170, L = 38, Rr = 14, T = 22, B = 26;
+  const vals = pts.map(([, v]) => v);
+  const goalIn = c.goalWeight && c.goalWeight >= Math.min(...vals) - 1.5 && c.goalWeight <= Math.max(...vals) + 1.5;
+  const all = goalIn ? vals.concat(c.goalWeight) : vals;
+  let lo = Math.min(...all), hi = Math.max(...all);
+  if (hi - lo < 1.6) { const m = (hi + lo) / 2; lo = m - 0.8; hi = m + 0.8; }
+  lo = Math.floor((lo - 0.2) * 2) / 2; hi = Math.ceil((hi + 0.2) * 2) / 2;
+  const d0 = weightRange === 'all' ? c.start : pts[0][0];
+  const span = weightRange === 'all' ? Math.max(c.days - 1, 1) : Math.max(diffDays(pts[0][0], pts.at(-1)[0]), 6);
+  const x = (d) => L + (clamp(diffDays(d0, d), 0, span) / span) * (W - L - Rr);
+  const y = (v) => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
   const xy = pts.map(([d, v]) => [x(d), y(v)]);
-  const line = xy.map(([a, b]) => `${a.toFixed(1)},${b.toFixed(1)}`).join(' ');
-  const last = pts.at(-1);
+  const line = xy.map(([p, q]) => `${p.toFixed(1)},${q.toFixed(1)}`).join(' ');
+  const area = `${xy[0][0].toFixed(1)},${(H - B).toFixed(1)} ${line} ${xy.at(-1)[0].toFixed(1)},${(H - B).toFixed(1)}`;
+  const ticks = [lo, (lo + hi) / 2, hi];
+  const md = (d) => { const t = parse(d); return `${t.getMonth() + 1}/${t.getDate()}`; };
+  const last = pts.at(-1), [lx, ly] = xy.at(-1);
   return `<svg viewBox="0 0 ${W} ${H}" class="chart" role="img" aria-label="체중 그래프, 최근 ${last[1]}kg">
-    <text x="0" y="${y(hi) + 4}" class="ax">${hi}</text><text x="0" y="${y(lo) + 4}" class="ax">${lo}</text>
-    <line x1="${P}" x2="${W - 10}" y1="${y(hi)}" y2="${y(hi)}" class="grid"/>
-    <line x1="${P}" x2="${W - 10}" y1="${y(lo)}" y2="${y(lo)}" class="grid"/>
-    ${c.goalWeight ? `<line x1="${P}" x2="${W - 10}" y1="${y(c.goalWeight)}" y2="${y(c.goalWeight)}" class="goal"/><text x="${W - 10}" y="${y(c.goalWeight) - 5}" class="ax goal-t" text-anchor="end">목표 ${c.goalWeight}</text>` : ''}
-    ${pts.length > 1 ? `<polyline points="${line}" class="wline"/>` : ''}
-    ${xy.slice(0, -1).map(([a, b]) => `<circle cx="${a}" cy="${b}" r="2.5" class="wdot"/>`).join('')}
-    <circle cx="${xy.at(-1)[0]}" cy="${xy.at(-1)[1]}" r="4.5" class="wlast"/>
-    <text x="${P}" y="${H - 6}" class="ax">DAY 1</text><text x="${W - 10}" y="${H - 6}" class="ax" text-anchor="end">DAY ${span + 1}</text>
+    ${ticks.map((v) => `<line x1="${L}" x2="${W - Rr}" y1="${y(v)}" y2="${y(v)}" class="grid"/><text x="${L - 6}" y="${y(v) + 3.5}" class="ax" text-anchor="end">${v.toFixed(1)}</text>`).join('')}
+    <text x="${L - 6}" y="${T - 9}" class="ax" text-anchor="end">kg</text>
+    ${goalIn ? `<line x1="${L}" x2="${W - Rr}" y1="${y(c.goalWeight)}" y2="${y(c.goalWeight)}" class="goal"/><text x="${W - Rr}" y="${y(c.goalWeight) - 5}" class="ax goal-t" text-anchor="end">목표 ${c.goalWeight}kg</text>` : ''}
+    ${pts.length > 1 ? `<polygon points="${area}" class="area"/><polyline points="${line}" class="wline"/>` : ''}
+    ${xy.slice(0, -1).map(([p, q]) => `<circle cx="${p}" cy="${q}" r="2.6" class="wdot"/>`).join('')}
+    <circle cx="${lx}" cy="${ly}" r="4.8" class="wlast"/>
+    <text x="${clamp(lx, L + 24, W - Rr - 4)}" y="${ly - 10}" class="ax wval" text-anchor="${lx > W - 60 ? 'end' : 'middle'}">${last[1]}kg</text>
+    <text x="${L}" y="${H - 8}" class="ax">${weightRange === 'all' ? 'DAY 1' : md(pts[0][0])}</text>
+    <text x="${W - Rr}" y="${H - 8}" class="ax" text-anchor="end">${weightRange === 'all' ? `DAY ${c.days}` : md(addDays(pts[0][0], span))}</text>
   </svg>`;
 }
 

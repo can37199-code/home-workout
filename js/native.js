@@ -87,6 +87,12 @@ export async function nativeShareFile(name, text, title) {
   catch (e) { if (/cancel/i.test(e.message || '')) return false; throw e; }
 }
 
+export async function nativeShareImage(name, base64) {
+  const { uri } = await Fs.writeFile({ path: name, data: base64, directory: 'CACHE', recursive: true });
+  try { await Share.share({ files: [uri], dialogTitle: '오늘 기록 공유' }); return true; }
+  catch (e) { if (/cancel/i.test(e.message || '')) return false; throw e; }
+}
+
 // 안드로이드 뒤로 가기: handler가 true를 돌려주면 처리한 것, 아니면 앱을 백그라운드로 보낸다
 export function onBackButton(handler) {
   App?.addListener('backButton', () => { if (!handler()) App.minimizeApp(); });

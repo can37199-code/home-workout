@@ -7,6 +7,7 @@ const P = {
   close: '<path d="M6 6l12 12M18 6L6 18"/>',
   music: '<path d="M9 18V6l11-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/>',
   arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+  share: '<path d="M12 15V3.5M7.5 8L12 3.5 16.5 8"/><path d="M5 12.5V20h14v-7.5"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   prev: '<path d="M15 5l-7 7 7 7"/>',
   next: '<path d="M9 5l7 7-7 7"/>',

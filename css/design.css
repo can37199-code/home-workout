@@ -412,3 +412,49 @@ div.srow { cursor: default; }
 .pw-timeline b { font-size: 14.5px; color: var(--ink); }
 .pw-timeline span { font-size: 13px; color: var(--muted); }
 .pw-price span:not(.tag) { line-height: 1.4; }
+
+/* ---------- 위계 정리: 섹션 머리 아이콘은 가볍게, 보조 섹션은 카드 없이 ---------- */
+.block-head h2 .ico { width: 22px; height: 22px; padding: 0; border-radius: 0; background: none; color: var(--coral); }
+.block.t-teal .block-head h2 .ico { background: none; color: var(--teal); }
+.block.t-ink .block-head h2 .ico { background: none; color: var(--ink); }
+.block.t-violet .block-head h2 .ico { background: none; color: var(--violet); }
+.block.flat { background: transparent; border: 0; box-shadow: none; padding: 4px 4px 0; }
+.rtabs { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 3; box-shadow: 0 6px 12px -10px #0004; }
+.tabwrap { display: contents; }
+.tabwrap.hidden { display: none; }
+
+/* 홈: 미션 한 줄 요약, 미니 운동 보조 버튼 */
+.mission-line { appearance: none; display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 16px; border-radius: 18px; border: 1px solid var(--panel-line); background: var(--panel); color: var(--ink); font: inherit; text-align: left; cursor: pointer; box-shadow: var(--shadow); }
+.mission-line > .ico:first-child { width: 22px; height: 22px; color: var(--teal); flex: none; }
+.mission-line > .ico:last-child { width: 18px; height: 18px; color: var(--muted); flex: none; }
+.ml-text { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.ml-text b { font-size: 15px; }
+.ml-text small { font-size: 13px; color: var(--muted); }
+.ml-bars { display: flex; gap: 4px; }
+.ml-bars i { width: 22px; height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--teal) calc(var(--p) * 100%), var(--line) 0); }
+.mini-btn { width: 100%; justify-content: space-between; font-weight: 500; font-size: 14px; box-shadow: inset 0 0 0 1px var(--line-2); }
+.mini-btn small { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+
+/* 통계: 체중 요약, 기간 전환, 빈 상태 */
+.seg.mini button { padding: 5px 10px; font-size: 12.5px; }
+.w-sum { margin: 0; font-size: 14px; color: var(--ink-2); }
+.w-sum .good { color: var(--teal); font-weight: 700; }
+.w-sum .bad { color: var(--coral); font-weight: 700; }
+.chart .ax { font-size: 11px; }
+.chart .wval { fill: var(--ink); font-weight: 700; font-size: 12px; }
+.chart .area { fill: var(--coral); opacity: .12; }
+.empty-state { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 18px 8px; color: var(--muted); }
+.empty-state .ico { width: 30px; height: 30px; color: var(--line-2); }
+.empty-state b { color: var(--ink-2); font-size: 15px; }
+.empty-state span { font-size: 13px; }
+.share-btn { box-shadow: inset 0 0 0 1px var(--line-2); }
+
+/* ---------- 읽기 쉽게: 작은 글자 키우기, 누르는 영역 넓히기 ---------- */
+.badge small { font-size: 12.5px; }
+.ex-list .amt small { font-size: 12px; }
+.nav button { font-size: 11.5px; }
+.legend, .g-foot, .pw-legal { font-size: 13px; }
+.btn.small { min-height: 40px; padding: 8px 14px; }
+.cp-actions .btn.small { min-width: 56px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --muted: #9ba1a4; } }
+:root[data-theme="dark"] { --muted: #9ba1a4; }
