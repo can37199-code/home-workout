@@ -10,8 +10,10 @@ import { saveBlob, loadBlob } from './idb.js';
 import { startPlaybackMode, stopPlaybackMode } from './audio.js';
 import { icon } from './icons.js';
 import * as RW from './rewards.js';
+import * as BILL from './billing.js';
+import { FLAGS } from './flags.js';
 import { PUSH_HOUR, pushSupported, currentSubscription, enablePush, disablePush, showNow as webShowNow } from './push.js';
-import { nativeShareFile, setThemeBars, isNative, nativeNotifyPermission, nativeNotifyEnable, nativeReschedule, nativeShowNow, onBackButton, onResume } from './native.js';
+import { remindAt, remindLabel, nativeShareFile, setThemeBars, isNative, nativeNotifyPermission, nativeNotifyEnable, nativeReschedule, nativeShowNow, onBackButton, onResume } from './native.js';
 import {
   db, save, replaceAll, resetAll, today, addDays, diffDays, parse, fmt, dayIndex, streak, bestStreak, latestWeight, onSave,
 } from './store.js';
@@ -67,11 +69,15 @@ function go(view, arg) {
   music.stop();
   window.scrollTo(0, 0);
   const c = db().challenge;
-  if (!c && view !== 'setup') view = 'setup';
-  nav.classList.toggle('hidden', view === 'setup' || view === 'player' || view === 'finish');
+  const FLOW = ['welcome', 'health', 'setup'];
+  if (!c && !FLOW.includes(view)) view = db().prefs.onboarded ? 'setup' : 'welcome';
+  if (!c && view === 'setup' && !db().prefs.onboarded) view = 'welcome';
+  // 무료 체험이 끝났으면 운동 대신 이용권 화면으로 (구매하면 원래 하려던 운동으로 이어 간다)
+  if (view === 'player' && !BILL.canWorkout()) { arg = { next: arg }; view = 'paywall'; }
+  nav.classList.toggle('hidden', ['welcome', 'health', 'setup', 'notifyAsk', 'paywall', 'player', 'finish'].includes(view));
   nav.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.go === view));
   currentView = view;
-  ({ setup, home, calendar, rewards, stats, settings, player, finish })[view](arg);
+  ({ welcome, health, notifyAsk, paywall, setup, home, calendar, rewards, stats, settings, player, finish })[view](arg);
   enhance();
 }
 
@@ -155,8 +161,204 @@ function setup() {
       remindAt: app.querySelector('#remind').value || '20:00',
     };
     if (w0 && !db().weights[start]) db().weights[start] = w0;
-    save(); go('home');
+    BILL.ensureTrial();
+    save();
+    go(!c && isNative() && db().prefs.notify === undefined ? 'notifyAsk' : 'home');
   });
+}
+
+// ---------- 첫 실행 안내: 환영 → 건강 확인 → 챌린지 설정 → (앱) 알림 허용 ----------
+function welcome() {
+  app.innerHTML = `
+  <section class="page onboard">
+    <div class="setup-hero">
+      <span class="eyebrow">오늘홈트</span>
+      <div class="display">Every<br>Day<em>.</em></div>
+      <p class="muted">집에서 하루 10~20분, 정해진 기간 동안 빠짐없이.</p>
+    </div>
+    <ul class="ob-points">
+      <li>${icon('play')}<div><b>영상 코치를 따라 하면 끝</b><span>동작마다 영상과 음성이 횟수를 세 줘요.</span></div></li>
+      <li>${icon('sparkle')}<div><b>영상 속 코치는 AI 가상 인물이에요</b><span>생성형 AI로 만든 인물로, 실제 사람이 아니에요.</span></div></li>
+      <li>${icon('download')}<div><b>기록은 이 폰에만 저장돼요</b><span>가입 없이 시작하고, 서버로 보내지 않아요.</span></div></li>
+    </ul>
+    <button class="btn primary big" data-act="next"><span>시작하기</span>${icon('arrow')}</button>
+    <p class="legal-links center"><a href="https://can37199-code.github.io/home-workout/terms.html" target="_blank" rel="noopener">이용약관</a><span class="dot"></span><a href="https://can37199-code.github.io/home-workout/privacy.html" target="_blank" rel="noopener">개인정보처리방침</a></p>
+  </section>`;
+  app.querySelector('[data-act="next"]').addEventListener('click', () => go('health'));
+}
+
+// 운동 전 건강 확인 (PAR-Q를 쉬운 말로 줄인 것). '예'가 하나라도 있으면 상담을 권하고 입문 단계로 시작하게 한다
+const HEALTH_QS = [
+  '의사에게 심장 질환이 있다는 말을 들은 적이 있나요?',
+  '운동할 때나 쉴 때 가슴 통증을 느낀 적이 있나요?',
+  '어지럼증으로 휘청이거나 정신을 잃은 적이 있나요?',
+  '운동하면 더 나빠질 수 있는 뼈·관절 문제가 있나요?',
+  '혈압이나 심장 때문에 약을 먹고 있나요?',
+  '임신 중이거나 출산한 지 6개월이 안 됐나요?',
+];
+function health() {
+  app.innerHTML = `
+  <section class="page onboard">
+    <header class="ob-head"><span class="eyebrow">시작 전 확인</span><h1>운동 전 건강 확인</h1>
+      <p class="muted">안전하게 시작하려고 여쭤봐요. 답은 이 폰에만 저장돼요.</p></header>
+    <div class="block hq-list">
+      ${HEALTH_QS.map((q, k) => `<div class="hq" data-k="${k}"><p>${q}</p><div class="seg"><button type="button" data-v="0">아니요</button><button type="button" data-v="1">예</button></div></div>`).join('')}
+    </div>
+    <div class="note warn hidden" id="hWarn"><b>시작 전에 의사와 상담하길 권해요</b>
+      <p class="muted">상담 후에 시작하거나, 가장 쉬운 '입문' 단계로 천천히 시작하세요. 운동 중 통증·어지러움·숨이 너무 찬 느낌이 들면 바로 멈추세요.</p>
+      <label class="switch"><span>확인했어요. 무리하지 않을게요</span><input type="checkbox" id="hAck"></label></div>
+    <button class="btn primary big" data-act="next" disabled><span>다음</span>${icon('arrow')}</button>
+  </section>`;
+  const ans = Array(HEALTH_QS.length).fill(null);
+  const btn = app.querySelector('[data-act="next"]'), warn = app.querySelector('#hWarn'), ack = app.querySelector('#hAck');
+  const refresh = () => {
+    const anyYes = ans.includes(1);
+    warn.classList.toggle('hidden', !anyYes);
+    btn.disabled = ans.includes(null) || (anyYes && !ack.checked);
+  };
+  app.querySelectorAll('.hq').forEach((row) => row.addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    row.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+    ans[Number(row.dataset.k)] = Number(b.dataset.v); refresh();
+  }));
+  ack.addEventListener('change', refresh);
+  btn.addEventListener('click', () => {
+    db().prefs.health = { date: today(), yes: ans.map((v, k) => (v ? k : -1)).filter((k) => k >= 0) };
+    db().prefs.onboarded = true; save();
+    go('setup');
+  });
+}
+
+// (앱) 챌린지를 만든 직후 알림 허용을 묻는다
+function notifyAsk() {
+  app.innerHTML = `
+  <section class="page onboard">
+    <header class="ob-head"><span class="eyebrow">마지막 단계 · 알림</span><h1>매일 ${remindLabel(db())}에<br>알려 드릴까요?</h1>
+      <p class="muted">운동 전에는 오늘 할 운동과 보상을, 운동 후에는 오늘의 성과를 알려 드려요. 설정에서 언제든 끌 수 있어요.</p></header>
+    <div class="ob-bell">${icon('bell')}</div>
+    <button class="btn primary big" data-act="yes"><span>알림 받기</span>${icon('arrow')}</button>
+    <button class="btn" data-act="no">나중에</button>
+  </section>`;
+  app.querySelector('[data-act="yes"]').addEventListener('click', async () => {
+    db().prefs.notify = await nativeNotifyEnable(); save();
+    if (!db().prefs.notify) toast('알림은 설정에서 다시 켤 수 있어요');
+    go('home');
+  });
+  app.querySelector('[data-act="no"]').addEventListener('click', () => { db().prefs.notify = false; save(); go('home'); });
+}
+
+// ---------- 이용권(결제) ----------
+const trialChip = () => {
+  const a = BILL.access();
+  if (a.pending) return `<button class="trial-bar" data-act="paywall">${icon('clock')}<span>결제를 확인하고 있어요 · 확인되면 바로 열려요</span></button>`;
+  if (a.status === 'trial') return `<button class="trial-bar" data-act="paywall">${icon('gift')}<span>무료 체험 <b>${a.daysLeft === 1 ? '오늘까지' : `${a.daysLeft}일 남음`}</b></span><span class="tb-cta">평생 이용권 ${BILL.PRODUCT.priceLabel}</span></button>`;
+  if (a.status === 'expired') return `<div class="note warn"><b>무료 체험이 끝났어요</b><p class="muted">평생 이용권으로 운동을 이어 가세요. 지금까지의 기록은 그대로 볼 수 있어요.</p><button class="btn primary" data-act="paywall">평생 이용권 보기 · ${BILL.PRODUCT.priceLabel}</button></div>`;
+  return '';
+};
+
+function paywall(arg = {}) {
+  const a = BILL.access();
+  const head = a.status === 'expired' ? '무료 체험이 끝났어요' : a.status === 'premium' || a.status === 'owner' ? '평생 이용권을 갖고 있어요' : `무료 체험 ${a.daysLeft === 1 ? '오늘까지' : `${a.daysLeft}일 남음`}`;
+  const owned = a.status === 'premium' || a.status === 'owner';
+  app.innerHTML = `
+  <section class="page paywall">
+    <header class="pw-top"><button class="icon-btn" data-act="close" aria-label="닫기">${icon('close')}</button></header>
+    <div class="pw-hero">
+      <span class="eyebrow">${head}</span>
+      <h1>매일 하는 습관,<br>평생 이용권으로</h1>
+      <p class="muted">한 번만 결제하면 계속 쓸 수 있어요. 구독이 아니라 자동 결제가 없어요.</p>
+    </div>
+    <ul class="pw-list">
+      <li>${icon('play')}<span>모든 챌린지와 운동 프로그램</span></li>
+      <li>${icon('sparkle')}<span>실사 코치 영상과 음성 코칭, 운동량 자동 조절</span></li>
+      <li>${icon('trophy')}<span>코인·배지·보상, 기록과 체중 통계</span></li>
+      <li>${icon('bell')}<span>매일 운동 알림과 오늘의 성과 정리</span></li>
+      <li>${icon('download')}<span>이후 업데이트로 추가되는 기능 포함</span></li>
+    </ul>
+    <div class="pw-price"><div><b>${BILL.PRODUCT.priceLabel}</b><span>한 번 결제 · 평생 이용</span></div><span class="tag">구독 아님</span></div>
+    ${a.pending ? '<p class="note">결제를 확인하고 있어요. 확인되면 자동으로 열려요. 잠시 후 다시 확인해 주세요.</p>' : ''}
+    ${owned ? `<button class="btn primary big" data-act="close"><span>운동하러 가기</span>${icon('arrow')}</button>`
+      : `<button class="btn primary big" data-act="buy"${a.pending ? ' disabled' : ''}><span>${BILL.PRODUCT.priceLabel}에 평생 이용권 구매</span>${icon('arrow')}</button>
+         <button class="btn link-btn" data-act="restore">이미 구매했어요 · 구매 복원</button>`}
+    ${a.status === 'expired' ? '<button class="btn" data-act="records">구매하지 않고 기록만 보기</button>' : ''}
+    <p class="pw-legal">결제는 Google Play 계정으로 처리돼요. 구매 후 7일 이내에는 청약철회할 수 있어요. 다만 유료로 열린 프로그램을 이용하기 시작하면 「전자상거래법」 제17조 제2항에 따라 청약철회가 제한될 수 있어요. 환불은 Google Play 환불 절차를 따라요.</p>
+    <p class="legal-links center"><a href="https://can37199-code.github.io/home-workout/terms.html" target="_blank" rel="noopener">이용약관</a><span class="dot"></span><a href="https://can37199-code.github.io/home-workout/privacy.html" target="_blank" rel="noopener">개인정보처리방침</a></p>
+    ${BILL.isTestPayment() ? '<p class="pw-test">테스트 결제 모드 · 실제로 돈이 나가지 않아요</p>' : ''}
+  </section>`;
+  const on = (act, fn) => app.querySelectorAll(`[data-act="${act}"]`).forEach((b) => b.addEventListener('click', fn));
+  on('close', () => go('home'));
+  on('records', () => go('calendar'));
+  on('buy', async (e) => {
+    const btn = e.currentTarget; btn.disabled = true;
+    const r = await BILL.purchase();
+    if (r === 'success') { toast('구매 완료! 모든 기능이 열렸어요'); return arg.next ? go('player', arg.next) : go('home'); }
+    if (r === 'pending') { await notify('결제가 확인되면 자동으로 열려요. 편의점·계좌 결제는 확인까지 시간이 걸릴 수 있어요.', '결제 확인 중'); return paywall(arg); }
+    if (r === 'error') await notify('결제를 완료하지 못했어요. 돈은 빠져나가지 않았어요. 잠시 후 다시 시도해 주세요.', '결제 실패');
+    else toast('결제를 취소했어요');
+    btn.disabled = false;
+  });
+  on('restore', async () => {
+    if (await BILL.restore()) { toast('구매를 복원했어요'); go('home'); }
+    else notify('이 Google 계정으로 구매한 기록을 찾지 못했어요. 구매할 때 쓴 계정으로 로그인했는지 확인해 주세요.', '복원할 구매가 없어요');
+  });
+}
+
+// 테스트 결제 시트: 실제 Google Play 결제 화면 대신 결과를 골라 흐름을 시험한다
+BILL.setTestSheet(() => new Promise((resolve) => {
+  const el = document.createElement('div');
+  el.className = 'modal sheet';
+  el.innerHTML = `
+    <div class="modal-box" role="dialog" aria-modal="true">
+      <span class="eyebrow">테스트 결제 · 실제 결제 아님</span>
+      <h2>${BILL.PRODUCT.name}</h2>
+      <p class="modal-msg">${BILL.PRODUCT.priceLabel} · 실제 앱에서는 이 자리에 Google Play 결제 화면이 떠요. 시험할 결과를 고르세요.</p>
+      <div class="sheet-btns">
+        <button class="btn primary" data-r="success">결제 성공</button>
+        <button class="btn ghost" data-r="cancel">사용자가 취소</button>
+        <button class="btn ghost" data-r="pending">결제 보류 (편의점·계좌 결제)</button>
+        <button class="btn ghost" data-r="error">결제 오류</button>
+      </div>
+    </div>`;
+  el.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-r]');
+    if (!b && e.target !== el) return;
+    el.remove(); resolve(b ? b.dataset.r : 'cancel');
+  });
+  document.body.append(el);
+}));
+
+// 설정 맨 아래 테스트 메뉴 (출시용 빌드에는 없다)
+function testMenuBlock() {
+  if (!FLAGS.testMenu) return '';
+  const a = BILL.access(), b = db().billing || {};
+  const label = { owner: '개발자 모드(모두 열림)', premium: '구매함', trial: `체험 중 · ${a.daysLeft}일 남음`, expired: '체험 끝' }[a.status];
+  return `
+      <div class="block set test-menu">
+        <div class="block-head"><h2>${icon('sparkle')}테스트 메뉴</h2><span class="muted small">출시 빌드에는 안 보여요</span></div>
+        <p class="muted small">지금 상태: <b>${label}</b>${a.pending ? ' · 결제 보류 중' : ''}${b.test?.storeOwned ? ' · 계정에 구매 기록 있음' : ''}</p>
+        ${FLAGS.ownerUnlocked ? `<label class="switch"><span>판매 모드 미리보기 (체험·결제 화면 켜기)</span><input type="checkbox" data-t="toggleSalesPreview" ${b.test?.salesPreview ? 'checked' : ''}></label>` : ''}
+        <div class="test-grid">
+          <button class="btn ghost small" data-t="trialFresh">체험 처음부터 (7일)</button>
+          <button class="btn ghost small" data-t="trialLastDay">체험 마지막 날로</button>
+          <button class="btn ghost small" data-t="trialExpire">체험 끝내기</button>
+          <button class="btn ghost small" data-t="paywall">결제 화면 열기</button>
+          <button class="btn ghost small" data-t="approvePending">보류 결제 승인</button>
+          <button class="btn ghost small" data-t="reinstall">앱 재설치 흉내 (복원 시험)</button>
+          <button class="btn ghost small" data-t="refund">환불 처리</button>
+          <button class="btn ghost small" data-t="resetAll">결제 상태 초기화</button>
+          <button class="btn ghost small" data-t="onboarding">첫 실행 안내 다시 보기</button>
+        </div>
+      </div>`;
+}
+function bindTestMenu() {
+  app.querySelectorAll('.test-menu [data-t]').forEach((el) => el.addEventListener(el.type === 'checkbox' ? 'change' : 'click', () => {
+    const t = el.dataset.t;
+    if (t === 'paywall') return go('paywall');
+    if (t === 'onboarding') { db().prefs.onboarded = false; save(); return go('welcome'); }
+    BILL.testTools[t]();
+    toast('적용했어요'); settings();
+    app.querySelector('.test-menu')?.scrollIntoView({ block: 'center' });
+  }));
 }
 
 // ---------- 홈 ----------
@@ -285,7 +487,7 @@ function home() {
     </div>`;
   }
 
-  app.innerHTML = `<section class="page"><header class="page-head"><span class="eyebrow">오늘홈트</span>${installBtn()}</header>${statusBar()}${body}</section>`;
+  app.innerHTML = `<section class="page"><header class="page-head"><span class="eyebrow">오늘홈트</span>${installBtn()}</header>${statusBar()}${c ? trialChip() : ''}${body}</section>`;
   drawThumbs();
   bindInstall();
   bindCommon(home);
@@ -293,6 +495,7 @@ function home() {
   app.querySelector('[data-act="backup"]')?.addEventListener('click', async () => { if (await backupNow()) { toast('백업했어요'); home(); } });
   app.querySelector('[data-act="mini"]')?.addEventListener('click', (e) => go('player', { date: e.currentTarget.dataset.date, mini: true }));
   app.querySelector('[data-act="new"]')?.addEventListener('click', () => { db().challenge = null; save(); go('setup'); });
+  app.querySelectorAll('[data-act="paywall"]').forEach((b) => b.addEventListener('click', () => go('paywall')));
 }
 
 // ---------- 플레이어 / 완료 ----------
@@ -436,7 +639,9 @@ function finish({ date, r, award }) {
     if (w) db().weights[date] = w;
     save(); go('home');
     // 저녁 8시 알림이 이미 지난 뒤에 운동을 마쳤다면, 오늘의 성과 알림을 지금 보낸다 (8시 전이면 8시 알림이 성과를 정리해 준다)
-    if (new Date().getHours() >= PUSH_HOUR && !db().rewards.recapSent?.[date]) {
+    const rt = remindAt(db()), nowD = new Date();
+    const afterRemind = isNative() ? nowD.getHours() * 60 + nowD.getMinutes() >= rt.h * 60 + rt.m : nowD.getHours() >= PUSH_HOUR;
+    if (afterRemind && !db().rewards.recapSent?.[date]) {
       (isNative() ? nativeShowNow(db()) : webShowNow(db())).then((ok) => { if (ok) { (db().rewards.recapSent ||= {})[date] = true; save(); } });
     }
   });
@@ -850,7 +1055,7 @@ function settings() {
           <button class="btn ghost small" data-act="edit">바꾸기</button></div>
       </div>
       ${isNative() ? `<div class="block set" id="notifySec">
-        <div class="block-head"><h2>${icon('bell')}알림</h2><span class="muted small">매일 저녁 8시</span></div>
+        <div class="block-head"><h2>${icon('bell')}알림</h2><span class="muted small">매일 ${remindLabel(db())}</span></div>
         <p class="muted small" id="notifyStatus">확인하는 중…</p>
         <div class="row"><button class="btn primary" data-act="notify-toggle">알림 켜기</button><button class="btn ghost" data-act="notify-test">알림 미리보기</button></div>
       </div>` : ''}
@@ -922,16 +1127,23 @@ function settings() {
         </ul>
         <p class="legal-links"><a href="https://can37199-code.github.io/home-workout/terms.html" target="_blank" rel="noopener">이용약관</a><span class="dot"></span><a href="https://can37199-code.github.io/home-workout/privacy.html" target="_blank" rel="noopener">개인정보처리방침</a></p>
       </div>
+      ${BILL.access().status !== 'owner' ? `<div class="block set">
+        <div class="block-head"><h2>${icon('gift')}이용권</h2><span class="muted small">${{ premium: '평생 이용권 보유', trial: `무료 체험 ${BILL.access().daysLeft}일 남음`, expired: '무료 체험 끝' }[BILL.access().status]}</span></div>
+        <button class="btn ghost" data-act="paywall" style="align-self:flex-start">${BILL.access().status === 'premium' ? '이용권 보기' : `평생 이용권 · ${BILL.PRODUCT.priceLabel}`}</button>
+      </div>` : ''}
       <div class="block set">
         <div class="block-head"><h2>${icon('trash')}데이터</h2></div>
         <button class="btn danger" data-act="reset" style="align-self:flex-start;padding-left:0">모든 기록 지우기</button>
-        <p class="muted small">오늘홈트 · 데이터는 서버로 전송되지 않아요</p>
+        <p class="muted small">오늘홈트 1.0.0 · 데이터는 서버로 전송되지 않아요</p>
       </div>
+${testMenuBlock()}
     </div>
   </section>`;
   drawThumbs();
   const on = (act, fn) => app.querySelector(`[data-act="${act}"]`).addEventListener('click', fn);
   on('edit', () => go('setup'));
+  app.querySelector('[data-act="paywall"]')?.addEventListener('click', () => go('paywall'));
+  bindTestMenu();
 
   // 앱: 폰 예약 알림
   if (isNative()) {
@@ -940,7 +1152,7 @@ function settings() {
       const perm = await nativeNotifyPermission();
       const onNow = p.notify === true && perm === 'granted';
       st.textContent = perm === 'denied' ? '알림이 꺼져 있어요. 폰 설정 → 애플리케이션 → 오늘홈트 → 알림에서 허용해 주세요.'
-        : onNow ? '켜져 있어요. 매일 저녁 8시, 운동 전이면 독려를, 운동 후면 오늘의 성과를 알려 줘요.'
+        : onNow ? `켜져 있어요. 매일 ${remindLabel(db())}쯤, 운동 전이면 독려를, 운동 후면 오늘의 성과를 알려 줘요. 시간은 챌린지 설정의 "매일 운동할 시간"을 따라요.`
         : '꺼져 있어요. 켜면 운동 전에는 독려, 운동 후에는 오늘의 성과를 알려 줘요.';
       tg.textContent = onNow ? '알림 끄기' : '알림 켜기';
       tg.className = onNow ? 'btn ghost' : 'btn primary';
@@ -1114,12 +1326,13 @@ applyTheme();
 if (!isNative() && 'serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
 if (isNative()) {
   let t = 0;
-  const resched = () => { clearTimeout(t); t = setTimeout(() => nativeReschedule(db(), PUSH_HOUR).catch(() => {}), 800); };
+  const resched = () => { clearTimeout(t); t = setTimeout(() => nativeReschedule(db()).catch(() => {}), 800); };
   onSave(resched); onResume(resched); resched();
   onBackButton(() => {
     const modal = document.querySelector('.modal');
     if (modal) { modal.dispatchEvent(new MouseEvent('click', { bubbles: true })); return true; }
     if (currentView === 'player') { app.querySelector(app.querySelector('#pPause')?.classList.contains('hidden') ? '[data-act="pause"]' : '[data-act="exit"]')?.click(); return true; }
+    if (currentView === 'health') { go('welcome'); return true; }
     if (currentView !== 'home' && db().challenge) { go('home'); return true; }
     return false;
   });

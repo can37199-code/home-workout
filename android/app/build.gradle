@@ -1,5 +1,12 @@
 apply plugin: 'com.android.application'
 
+// 출시용 서명 키: 저장소에 넣지 않는다. local.properties의 homet.keystore가 가리키는 keystore.properties에서 읽는다
+def keyProps = new Properties()
+def localProps = new Properties()
+if (rootProject.file('local.properties').exists()) rootProject.file('local.properties').withInputStream { localProps.load(it) }
+def keyPropsPath = localProps.getProperty('homet.keystore')
+if (keyPropsPath && new File(keyPropsPath).exists()) new File(keyPropsPath).withInputStream { keyProps.load(it) }
+
 android {
     namespace = "com.can3719.homet"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -8,7 +15,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
-        versionName "1.0"
+        versionName "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +23,19 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (keyProps['storeFile']) {
+                storeFile file(keyProps['storeFile'])
+                storePassword keyProps['storePassword']
+                keyAlias keyProps['keyAlias']
+                keyPassword keyProps['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
+            if (keyProps['storeFile']) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

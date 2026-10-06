@@ -5,7 +5,8 @@
   "scripts": {
     "voice": "node tools/make-voice.mjs --force",
     "serve": "node tools/serve.mjs",
-    "build:android": "node tools/build-native.mjs && npx cap sync android"
+    "build:android": "node tools/build-native.mjs && npx cap sync android",
+    "build:release": "node tools/build-native.mjs --release && npx cap sync android"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",

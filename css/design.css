@@ -1,3 +1,5 @@
+/* 글꼴: 아이폰은 애플 SD 산돌고딕, 그 밖(안드로이드 등)은 앱에 들어 있는 Pretendard (SIL OFL 1.1, fonts/LICENSE.txt) */
+@font-face { font-family: "Pretendard Variable"; font-weight: 45 920; font-style: normal; font-display: swap; src: url("../fonts/PretendardVariable.woff2") format("woff2-variations"), url("../fonts/PretendardVariable.woff2") format("woff2"); }
 /* 디자인 v3 — 섹션을 카드로 묶고, 아이콘 제목과 모션을 더한다.
    글꼴: 애플 기기에서는 애플고딕(Apple SD Gothic Neo), 그 밖에서는 같은 계열의 프리텐다드.
    app.css·rewards.css 다음에 불러와서 같은 선택자를 덮어쓴다. */
@@ -261,3 +263,52 @@ input:focus, textarea:focus { background: var(--panel); border-color: var(--ink)
 .credits b { font-size: 14px; }
 .legal-links { display: flex; align-items: center; gap: 10px; margin: 4px 0 0; font-size: 13px; }
 .legal-links a { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+
+/* ---------- 첫 실행 안내 ---------- */
+.onboard { gap: 22px; }
+.ob-head h1 { font-size: 26px; line-height: 1.3; letter-spacing: -.02em; margin: 6px 0 6px; }
+.ob-points { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.ob-points li { display: flex; gap: 14px; align-items: flex-start; background: var(--panel); border: 1px solid var(--panel-line); border-radius: 18px; padding: 14px 16px; }
+.ob-points .ico { width: 22px; height: 22px; color: var(--coral); flex: none; margin-top: 2px; }
+.ob-points b { display: block; font-size: 15px; color: var(--ink); }
+.ob-points span { font-size: 13.5px; color: var(--muted); }
+.hq-list { gap: 0; padding-top: 4px; padding-bottom: 4px; }
+.hq { display: flex; flex-direction: column; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.hq:last-child { border-bottom: 0; }
+.hq p { margin: 0; color: var(--ink); font-size: 14.5px; }
+.hq .seg { align-self: flex-start; }
+.hq .seg button[data-v="1"].on { background: var(--coral); color: #fff; }
+.ob-bell { display: grid; place-items: center; height: 140px; }
+.ob-bell .ico { width: 72px; height: 72px; color: var(--coral); animation: flicker 2.4s ease-in-out infinite; }
+.legal-links.center { justify-content: center; }
+.btn[disabled] { opacity: .45; pointer-events: none; }
+
+/* ---------- 이용권 ---------- */
+.trial-bar {
+  appearance: none; border: 1px solid var(--panel-line); background: var(--panel); color: var(--ink); border-radius: 14px;
+  display: flex; align-items: center; gap: 8px; padding: 10px 14px; font: inherit; font-size: 14px; cursor: pointer; text-align: left;
+}
+.trial-bar .ico { width: 17px; height: 17px; color: var(--coral); flex: none; }
+.trial-bar b { color: var(--coral); }
+.trial-bar .tb-cta { margin-left: auto; font-size: 12.5px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+.note.warn { border-left-color: var(--coral); }
+.paywall { gap: 18px; }
+.pw-top { display: flex; justify-content: flex-end; }
+.pw-hero h1 { font-size: 30px; line-height: 1.22; letter-spacing: -.025em; margin: 6px 0 8px; color: var(--ink); }
+.pw-list { list-style: none; margin: 0; padding: 16px; display: flex; flex-direction: column; gap: 12px; background: var(--panel); border: 1px solid var(--panel-line); border-radius: 20px; }
+.pw-list li { display: flex; gap: 12px; align-items: center; font-size: 14.5px; color: var(--ink); }
+.pw-list .ico { width: 20px; height: 20px; color: var(--coral); flex: none; }
+.pw-price { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-radius: 20px; border: 2px solid var(--coral); background: var(--coral-soft); }
+.pw-price b { display: block; font-size: 26px; letter-spacing: -.02em; color: var(--ink); }
+.pw-price span:not(.tag) { font-size: 13px; color: var(--ink-2); }
+.pw-legal { font-size: 12px; line-height: 1.6; color: var(--muted); margin: 0; }
+.pw-test { text-align: center; font-size: 12px; font-weight: 700; color: var(--warn); margin: 0; }
+.modal.sheet .modal-box { gap: 8px; }
+.modal.sheet h2 { margin: 0; font-size: 19px; }
+.sheet-btns { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.sheet-btns .btn.ghost { box-shadow: inset 0 0 0 1px var(--line-2); }
+
+/* ---------- 테스트 메뉴 ---------- */
+.test-menu { border: 1px dashed var(--warn); }
+.test-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.test-grid .btn { box-shadow: inset 0 0 0 1px var(--line-2); font-size: 13px; padding: 9px 8px; }

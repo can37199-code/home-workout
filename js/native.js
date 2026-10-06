@@ -41,23 +41,28 @@ export async function nativeNotifyEnable() {
 
 const note = (id, m, at) => ({
   id, title: m.title, body: m.body, largeBody: m.body, channelId: CHANNEL, smallIcon: 'ic_stat_notify', iconColor: '#E8613C',
-  isExactNotification: false, // 정확한 알람 권한을 요구하지 않는다 (요구하면 플러그인이 설정 화면을 연다). 8시 '쯤' 울리면 충분하다
+  isExactNotification: false, // 정확한 알람 권한을 요구하지 않는다 (요구하면 플러그인이 설정 화면을 연다). 정한 시각 '쯤' 울리면 충분하다
   ...(at ? { schedule: { at, allowWhileIdle: true } } : {}),
 });
 
 // 저장된 기록으로 앞으로 14일의 저녁 알림 문구를 만들어 다시 건다.
 // 오늘 운동을 이미 했으면 오늘 알림은 성과 정리, 아직이면 독려. 미래 날짜는 "그날까지 운동 안 함"을 기준으로 만든다
 // → 앱을 다시 열지 않고 지나간 날이 있으면 그 상황(연속 기록 위기 등)에 맞는 문구가 그대로 맞다.
-export async function nativeReschedule(data, hour) {
+// 이용자가 챌린지 설정에서 고른 "매일 운동할 시간" (기본 20:00)
+export const remindAt = (data) => { const [h, m] = (data.challenge?.remindAt || '20:00').split(':').map(Number); return { h: h || 0, m: m || 0 }; };
+export const remindLabel = (data) => { const { h, m } = remindAt(data); return `${h < 12 ? '오전' : h < 18 ? '오후' : '저녁'} ${h % 12 || 12}시${m ? ' ' + m + '분' : ''}`; };
+
+export async function nativeReschedule(data) {
   if (!LN) return;
   const ids = Array.from({ length: DAYS }, (_, i) => ({ id: BASE_ID + i }));
   await LN.cancel({ notifications: ids }).catch(() => {});
   if (data.prefs?.notify !== true || (await nativeNotifyPermission()) !== 'granted') return;
   await ensureChannel();
   const now = new Date();
+  const { h, m } = remindAt(data);
   const list = [];
   for (let i = 0; i < DAYS; i++) {
-    const at = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i, hour, 0, 0);
+    const at = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i, h, m, 0);
     if (at <= now) continue;
     list.push(note(BASE_ID + i, self.buildPushMessage(data, at), at));
   }
