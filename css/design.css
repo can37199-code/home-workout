@@ -458,3 +458,10 @@ div.srow { cursor: default; }
 .cp-actions .btn.small { min-width: 56px; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --muted: #9ba1a4; } }
 :root[data-theme="dark"] { --muted: #9ba1a4; }
+
+/* 설정: 프로그램 고르기 */
+.programs { display: flex; flex-direction: column; gap: 8px; }
+.prog-card { appearance: none; display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 12px 14px; border-radius: 14px; border: 1.5px solid var(--line-2); background: var(--panel); color: var(--ink); font: inherit; cursor: pointer; }
+.prog-card b { font-size: 15px; }
+.prog-card span { font-size: 13px; color: var(--muted); }
+.prog-card.on { border-color: var(--coral); background: var(--coral-soft); }

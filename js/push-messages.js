@@ -9,7 +9,13 @@
     highKnees: '하이니', mountainClimber: '마운틴 클라이머', gluteBridge: '글루트 브릿지', crunch: '크런치', legRaise: '레그 레이즈', burpee: '버피',
   };
   var HOLD = { plank: true };
-  var PLAN = { A: '하체 집중', B: '상체·코어', C: '전신 유산소', R: '가벼운 회복' };
+  // 프로그램별 요일 이름 (js/plan.js의 PROGRAMS와 같게 유지)
+  var PLANS = {
+    diet30: { A: '하체 집중', B: '상체·코어', C: '전신 유산소', R: '가벼운 회복' },
+    lower21: { A: '엉덩이 집중', B: '허벅지 라인', C: '하체 유산소', R: '가벼운 회복' },
+    core14: { A: '윗배', B: '아랫배·옆구리', C: '코어 유산소', R: '가벼운 회복' },
+  };
+  function planName(c, idx) { return (PLANS[c.program] || PLANS.diet30)[CYCLE[((idx % 7) + 7) % 7]]; }
   var CYCLE = 'ABCABCR';
   var MILESTONES = [3, 7, 14, 21, 30, 50, 100];
   // [음식, kcal, 단위]: 오늘 태운 칼로리를 1~3단위로 말할 수 있는 음식을 고른다
@@ -39,7 +45,7 @@
       logs: logs, r: r, c: c, idx: idx, day: idx + 1, inChallenge: idx >= 0 && idx < c.days, streak: streak,
       yKept: kept(add(date, -1)), anyBefore: Object.keys(logs).some(function (k) { return logs[k].done && k < date; }),
       doneDays: doneDays, weekDone: weekDone, miniUsed: miniUsed, coins: r.coins || 0, shields: r.shields || 0,
-      plan: PLAN[CYCLE[((idx % 7) + 7) % 7]],
+      plan: planName(c, idx),
     };
   }
 
@@ -108,7 +114,7 @@
     var pct = Math.round((x.doneDays / x.c.days) * 100);
     var mins = Math.max(1, Math.round((log.sec || 0) / 60));
     var nextMs = MILESTONES.filter(function (m) { return m > x.streak; })[0];
-    var tomorrow = x.idx + 1 < x.c.days ? PLAN[CYCLE[(x.idx + 1) % 7]] : null;
+    var tomorrow = x.idx + 1 < x.c.days ? planName(x.c, x.idx + 1) : null;
     var ws = Object.keys(data.weights || {}).sort();
     var dw = ws.length > 1 ? data.weights[ws[ws.length - 1]] - data.weights[ws[0]] : null;
 

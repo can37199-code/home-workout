@@ -1,7 +1,7 @@
 import { EXERCISES } from './exercises.js';
 import { MEDIA } from './media.js';
 import { Avatar } from './avatar.js';
-import { LEVELS, dayPlan, estimateSec, miniPlan, challengePlan, ADAPT_MIN, ADAPT_MAX } from './plan.js';
+import { LEVELS, PROGRAMS, programOf, dayPlan, estimateSec, miniPlan, challengePlan, ADAPT_MIN, ADAPT_MAX } from './plan.js';
 import { LINES } from './voice-lines.js';
 import { runWorkout } from './player.js';
 import { ask, notify } from './ui.js';
@@ -118,6 +118,10 @@ function setup() {
     </div>
     <form id="f" class="form">
       <div class="field">
+        <label>프로그램</label>
+        <div class="programs" id="program">${Object.entries(PROGRAMS).map(([k, p]) => `<button type="button" data-v="${k}" data-days="${p.days}" class="prog-card ${(c?.program || 'diet30') === k ? 'on' : ''}"><b>${p.name}</b><span>${p.desc}</span></button>`).join('')}</div>
+      </div>
+      <div class="field">
         <label>챌린지 기간</label>
         <div class="chips" id="days">
           ${[14, 30, 60].map((d) => `<button type="button" data-v="${d}" class="${(c?.days || 30) === d ? 'on' : ''}">${d}일</button>`).join('')}
@@ -147,6 +151,14 @@ function setup() {
     if (id === 'days') app.querySelector('#daysIn').value = '';
   });
   pick('days'); pick('level');
+  // 프로그램을 바꾸면 기간도 그 프로그램 기본값으로
+  app.querySelector('#program').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    app.querySelectorAll('#program button').forEach((x) => x.classList.toggle('on', x === b));
+    const d = Number(b.dataset.days), chip = app.querySelector(`#days button[data-v="${d}"]`);
+    app.querySelectorAll('#days button').forEach((x) => x.classList.toggle('on', x === chip));
+    app.querySelector('#daysIn').value = chip ? '' : d;
+  });
   app.querySelector('#daysIn').addEventListener('input', () => app.querySelectorAll('#days button').forEach((x) => x.classList.remove('on')));
   app.querySelector('#cancel')?.addEventListener('click', () => go('settings'));
   app.querySelector('#f').addEventListener('submit', (e) => {
@@ -155,6 +167,8 @@ function setup() {
     const w0 = Number(app.querySelector('#w0').value) || null;
     const start = app.querySelector('#start').value || today();
     db().challenge = {
+      ...(c || {}),
+      program: app.querySelector('#program .on')?.dataset.v || 'diet30',
       start, days: clamp(days, 7, 180),
       level: app.querySelector('#level .on')?.dataset.v || 'easy',
       startWeight: w0, goalWeight: Number(app.querySelector('#w1').value) || null,
@@ -1155,7 +1169,7 @@ function settings(sub) {
   <section class="page settings-page">
     <header class="page-head"><h1>설정</h1></header>
     ${sgroup('내 챌린지', [
-      srow({ ico: 'flag', title: `${c.days}일 · ${LEVELS[c.level].label}`, sub: `${dateLabel(c.start)} 시작 · 매일 ${remindLabel(db())}`, act: 'edit', trail: '<span class="strail">바꾸기</span>' }),
+      srow({ ico: 'flag', title: `${programOf(c).name} · ${c.days}일 · ${LEVELS[c.level].label}`, sub: `${dateLabel(c.start)} 시작 · 매일 ${remindLabel(db())}`, act: 'edit', trail: '<span class="strail">바꾸기</span>' }),
       a.status !== 'owner' ? srow({ ico: 'gift', title: '이용권', sub: { premium: '평생 이용권 보유', trial: `무료 체험 ${a.daysLeft}일 남음`, expired: '무료 체험 끝' }[a.status], act: 'paywall' }) : '',
     ])}
     ${sgroup('알림·운동', [

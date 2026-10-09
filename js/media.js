@@ -13,6 +13,19 @@ export const MEDIA = {
   crunch: { dur: 3.083, reps: 1 },
   legRaise: { dur: 2.583, reps: 1 },
   burpee: { dur: 9.25, reps: 2 },
+  // 2차 확장 (21일 하체 라인 · 14일 복부 집중 · 회복)
+  sumoSquat: { dur: 3.417, reps: 1 },
+  sideLunge: { dur: 2.083, reps: 1 },
+  curtsyLunge: { dur: 2.25, reps: 1 },
+  donkeyKick: { dur: 2.583, reps: 1 },
+  calfRaise: { dur: 2.417, reps: 1 },
+  bicycleCrunch: { dur: 3.708, reps: 2 },
+  russianTwist: { dur: 4.417, reps: 2 },
+  flutterKick: { dur: 1.667, reps: 1 },
+  deadBug: { dur: 3.042, reps: 1 },
+  sidePlank: { dur: 4.5, reps: 1 },
+  shoulderTap: { dur: 1.375, reps: 1 },
+  catCow: { dur: 7.708, reps: 1 },
 };
 for (const [id, m] of Object.entries(MEDIA)) { m.src = `media/${id}.mp4`; m.poster = `media/${id}.jpg`; }
 

@@ -53,7 +53,7 @@ export function runWorkout(root, { plan, onFinish, onExit, open = false, best = 
 
   // 이번 운동에 쓸 음성을 미리 받아 둔다
   const ids = [...new Set(plan.items.map((it) => it.id))];
-  preloadVoice(['start', 'set-2', 'set-3', 'set-last', 'rest-same', 'half', 'last-3', 'done', 'switch-legs',
+  preloadVoice(['start', 'set-2', 'set-3', 'set-last', 'rest-same', 'half', 'last-3', 'done', 'switch-legs', 'switch-side',
     ...ids.flatMap((id) => [`intro-${id}`, `next-${id}`]),
     ...Array.from({ length: Math.min(MAX_COUNT, Math.max(...plan.items.map((it) => (Number.isFinite(it.target) ? it.target : 30)))) }, (_, k) => `count-${k + 1}`)]);
   // 이번 운동 영상도 미리 받아 둔다 (서비스 워커가 저장해서 다음부터는 오프라인으로도 재생)
@@ -91,7 +91,7 @@ export function runWorkout(root, { plan, onFinish, onExit, open = false, best = 
   let phase = 0, count = 0, timeLeft = 0, introTotal = 7;
   let paused = false, elapsed = 0, raf = 0, prevT = 0, lastSpoken = -1;
   const reps = {}, workSec = {};
-  let restSec = 0;
+  let restSec = 0, switched = false;
 
   // 화면 꺼짐 방지
   let wakeLock = null;
@@ -138,7 +138,8 @@ export function runWorkout(root, { plan, onFinish, onExit, open = false, best = 
     idx = i; step = steps[i];
     if (!step) return finish();
     ex = EXERCISES[step.kind === 'rest' ? step.next.id : step.item.id];
-    avatar.setExercise(ex);
+    if (ex.frames) avatar.setExercise(ex); // 실사 영상만 있는 동작은 아바타를 쓰지 않는다
+    switched = false;
     useVideo = video.setExercise(ex.id);
     $('pVideo').classList.toggle('hidden', !useVideo);
     $('pCanvas').classList.toggle('hidden', useVideo);
@@ -222,7 +223,7 @@ export function runWorkout(root, { plan, onFinish, onExit, open = false, best = 
     count++;
     reps[ex.id] = (reps[ex.id] || 0) + 1;
     const t = step.item.target;
-    if (ex.sides && !open && count === switchAt(t) && count < t) { setMirror(true); say('switch-legs'); }
+    if (ex.sides && !open && count === switchAt(t) && count < t) { setMirror(true); say(ex.switchVoice || 'switch-legs'); }
     else if (!open && t >= 8 && count === t - 3) say('last-3');
     else if (!open && t >= 10 && !ex.sides && count === Math.ceil(t / 2)) say('half');
     else say(`count-${Math.min(count, MAX_COUNT)}`);
@@ -256,6 +257,8 @@ export function runWorkout(root, { plan, onFinish, onExit, open = false, best = 
       } else {
         if (useVideo) video.play(); else phase += dt / repSec(ex);
         if (open && step.kind === 'work') timeLeft += dt; else timeLeft -= dt;
+        // 좌우가 있는 버티기 동작(사이드 플랭크): 절반이 지나면 영상을 반전하고 반대쪽으로
+        if (step.kind === 'work' && ex.sides && !open && !switched && timeLeft <= step.item.target / 2) { switched = true; setMirror(true); say(ex.switchVoice || 'switch-legs'); }
         const sec = Math.ceil(timeLeft);
         if (!(open && step.kind === 'work') && step.kind !== 'intro' && sec !== lastSpoken && sec <= 3 && sec >= 1) { lastSpoken = sec; beep(660, 90); }
         if (step.kind === 'work' && !open && sec !== lastSpoken && sec >= 10 && sec % 10 === 0 && sec < step.item.target) { lastSpoken = sec; say(`left-${sec}`, { interrupt: false }); }

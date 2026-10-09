@@ -13,13 +13,33 @@ export const LEVELS = {
 // 운동량 자동 조절 범위 (컨디션·완주 여부로 바뀜)
 export const ADAPT_MIN = 0.7, ADAPT_MAX = 1.4;
 
-const TEMPLATES = {
-  A: { title: '하체 집중', tag: '하체', items: ['squat', 'lunge', 'gluteBridge', 'jumpingJack'] },
-  B: { title: '상체·코어', tag: '상체·코어', items: ['pushup', 'plank', 'crunch', 'legRaise'] },
-  C: { title: '전신 유산소', tag: '유산소', items: ['jumpingJack', 'highKnees', 'mountainClimber', 'squat', 'burpee'] },
-  R: { title: '가벼운 회복', tag: '회복', items: ['gluteBridge', 'plank', 'crunch'] },
+// 프로그램: 7일 주기(1·2·3·1·2·3·회복). 날짜별 루틴은 key로 고른다.
+export const PROGRAMS = {
+  diet30: { name: '30일 다이어트 입문', days: 30, desc: '하체·상체·유산소를 번갈아 하는 기본 프로그램',
+    T: {
+      A: { title: '하체 집중', tag: '하체', items: ['squat', 'lunge', 'gluteBridge', 'jumpingJack'] },
+      B: { title: '상체·코어', tag: '상체·코어', items: ['pushup', 'plank', 'crunch', 'legRaise'] },
+      C: { title: '전신 유산소', tag: '유산소', items: ['jumpingJack', 'highKnees', 'mountainClimber', 'squat', 'burpee'] },
+      R: { title: '가벼운 회복', tag: '회복', items: ['catCow', 'gluteBridge', 'plank', 'crunch'] },
+    } },
+  lower21: { name: '21일 하체 라인', days: 21, desc: '엉덩이와 허벅지 라인을 집중해서',
+    T: {
+      A: { title: '엉덩이 집중', tag: '엉덩이', items: ['sumoSquat', 'donkeyKick', 'gluteBridge', 'curtsyLunge'] },
+      B: { title: '허벅지 라인', tag: '허벅지', items: ['squat', 'sideLunge', 'lunge', 'calfRaise'] },
+      C: { title: '하체 유산소', tag: '유산소', items: ['jumpingJack', 'sumoSquat', 'highKnees', 'curtsyLunge'] },
+      R: { title: '가벼운 회복', tag: '회복', items: ['catCow', 'gluteBridge', 'calfRaise'] },
+    } },
+  core14: { name: '14일 복부 집중', days: 14, desc: '윗배·아랫배·옆구리를 매일 조금씩',
+    T: {
+      A: { title: '윗배', tag: '윗배', items: ['crunch', 'bicycleCrunch', 'shoulderTap', 'plank'] },
+      B: { title: '아랫배·옆구리', tag: '아랫배', items: ['legRaise', 'flutterKick', 'russianTwist', 'sidePlank'] },
+      C: { title: '코어 유산소', tag: '유산소', items: ['mountainClimber', 'bicycleCrunch', 'deadBug', 'jumpingJack'] },
+      R: { title: '가벼운 회복', tag: '회복', items: ['catCow', 'deadBug', 'plank'] },
+    } },
 };
 const CYCLE = ['A', 'B', 'C', 'A', 'B', 'C', 'R'];
+export const programOf = (challenge) => PROGRAMS[challenge?.program] || PROGRAMS.diet30;
+export const planTitleAt = (challenge, index) => programOf(challenge).T[CYCLE[((index % 7) + 7) % 7]].title;
 
 // 목표 시간(초) → 그 동작의 목표 횟수(또는 버티기 초)
 export function targetFor(ex, sec) {
@@ -32,7 +52,7 @@ export function targetFor(ex, sec) {
 export function dayPlan(challenge, index) {
   const lv = LEVELS[challenge.level] || LEVELS.normal;
   const key = CYCLE[index % 7];
-  const tpl = TEMPLATES[key];
+  const tpl = programOf(challenge).T[key];
   const grow = 1 + Math.min(0.08 * Math.floor(index / 7), 0.6); // 매주 8%씩, 최대 60%
   const adapt = challenge.adapt || 1;
   const sec = lv.work * grow * adapt * (key === 'R' ? 0.8 : 1);

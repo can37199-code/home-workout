@@ -129,4 +129,32 @@ export const EXERCISES = {
   },
 };
 
+// 2차 확장 동작: 실사 영상으로만 보여 준다 (아바타 frames 없음). switchVoice는 절반에서 바꿀 때 쓰는 음성
+Object.assign(EXERCISES, {
+  sumoSquat: { name: '와이드 스쿼트', view: 'front', type: 'reps', base: 3.4, met: 5,
+    tips: ['발을 어깨너비보다 넓게, 발끝은 바깥으로', '허벅지가 바닥과 나란할 때까지 앉아요', '무릎은 발끝 방향으로 벌려요'] },
+  sideLunge: { name: '사이드 런지', view: 'front', type: 'reps', base: 2.1, met: 5, sides: true, unit: '절반에서 반대쪽',
+    tips: ['다리를 넓게 벌리고 서요', '한쪽 무릎만 굽히고 반대 다리는 쭉', '엉덩이는 뒤로, 가슴은 펴요'] },
+  curtsyLunge: { name: '커트시 런지', view: 'front', type: 'reps', base: 2.3, met: 5, sides: true, unit: '절반에서 다리 바꾸기',
+    tips: ['한 다리를 대각선 뒤로 보내요', '앞 허벅지가 바닥과 나란할 때까지', '상체는 곧게, 앞 무릎은 안으로 모이지 않게'] },
+  donkeyKick: { name: '킥백', view: 'side', type: 'reps', base: 2.6, met: 4, sides: true, unit: '절반에서 다리 바꾸기',
+    tips: ['네 발 자세에서 허리는 평평하게', '한 다리를 뒤로 뻗어 높이 올려요', '엉덩이에 힘을 주고 천천히 내려요'] },
+  calfRaise: { name: '카프 레이즈', view: 'side', type: 'reps', base: 2.4, met: 3,
+    tips: ['손은 허리에, 몸은 곧게', '발뒤꿈치를 최대한 높이 들어요', '천천히 내려와요'] },
+  bicycleCrunch: { name: '바이시클 크런치', view: 'side', type: 'reps', base: 1.9, met: 5, unit: '좌우 각각 1회',
+    tips: ['손은 머리 뒤에 가볍게', '팔꿈치와 반대쪽 무릎을 가까이', '허리는 바닥에 붙인 채로'] },
+  russianTwist: { name: '러시안 트위스트', view: 'front', type: 'reps', base: 2.2, met: 4, unit: '좌우 각각 1회',
+    tips: ['상체를 뒤로 45도 기울여요', '등은 곧게 펴고 좌우로 돌려요', '손끝이 엉덩이 옆 바닥을 스치게'] },
+  flutterKick: { name: '플러터 킥', view: 'side', type: 'hold', base: 1.7, met: 5,
+    tips: ['손은 엉덩이 아래, 허리는 바닥에', '다리를 펴고 바닥에서 살짝 띄워요', '작게 위아래로 번갈아 차요'] },
+  deadBug: { name: '데드버그', view: 'side', type: 'reps', base: 3, met: 3.5, sides: true, unit: '절반에서 반대쪽', switchVoice: 'switch-side',
+    tips: ['누워서 무릎 90도, 팔은 천장으로', '팔과 반대쪽 다리를 천천히 뻗어요', '허리가 뜨지 않게 배에 힘'] },
+  sidePlank: { name: '사이드 플랭크', view: 'front', type: 'hold', base: 4.5, met: 4, sides: true, switchVoice: 'switch-side',
+    tips: ['팔꿈치는 어깨 바로 아래', '머리부터 발끝까지 일직선', '골반이 처지지 않게 들어 올려요'] },
+  shoulderTap: { name: '플랭크 숄더 탭', view: 'side', type: 'reps', base: 1.4, met: 5, sides: true, unit: '절반에서 반대 손', switchVoice: 'switch-side',
+    tips: ['손은 어깨 아래, 몸은 일직선', '한 손으로 반대쪽 어깨를 톡', '골반이 흔들리지 않게'] },
+  catCow: { name: '캣카우', view: 'side', type: 'hold', base: 7.7, met: 2.5,
+    tips: ['네 발 자세에서 시작해요', '숨을 내쉬며 등을 둥글게 말아요', '숨을 들이쉬며 가슴을 열어요'] },
+});
+
 for (const [id, ex] of Object.entries(EXERCISES)) ex.id = id;
