@@ -22,7 +22,7 @@ export const MEDIA = {
   bicycleCrunch: { dur: 3.708, reps: 2 },
   russianTwist: { dur: 4.417, reps: 2 },
   flutterKick: { dur: 1.667, reps: 1 },
-  deadBug: { dur: 3.042, reps: 1 },
+  deadBug: { dur: 3.333, reps: 1 },
   sidePlank: { dur: 4.5, reps: 1 },
   shoulderTap: { dur: 1.375, reps: 1 },
   catCow: { dur: 7.708, reps: 1 },
