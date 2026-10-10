@@ -22,7 +22,7 @@ export const INTRO = {
   sumoSquat: '와이드 스쿼트입니다. 다리를 어깨너비보다 넓게 벌리고 발끝은 바깥으로 향하게 하세요. 무릎을 발끝 방향으로 벌리면서 깊게 앉아요.',
   sideLunge: '사이드 런지입니다. 다리를 넓게 벌리고, 한쪽 무릎만 굽혀 옆으로 앉으세요. 반대쪽 다리는 쭉 펴요. 절반을 하면 반대쪽으로 바꿔요.',
   curtsyLunge: '커트시 런지입니다. 한 다리를 대각선 뒤로 보내면서 앉으세요. 상체는 곧게 세워요. 절반을 하면 다리를 바꿔요.',
-  donkeyKick: '킥백입니다. 네 발 자세에서 허리를 평평하게 두고, 한 다리를 뒤로 뻗어 올리세요. 엉덩이에 힘을 주고 천천히 내려요.',
+  donkeyKick: '동키 킥입니다. 네 발 자세에서 허리를 평평하게 두고, 무릎을 구십 도로 굽힌 채 발바닥으로 천장을 밀듯이 들어 올리세요. 엉덩이에 힘을 주고 천천히 내려요.',
   calfRaise: '카프 레이즈입니다. 몸을 곧게 세우고, 발뒤꿈치를 최대한 높이 들었다가 천천히 내려오세요.',
   bicycleCrunch: '바이시클 크런치입니다. 손은 머리 뒤에 가볍게 두고, 팔꿈치와 반대쪽 무릎을 번갈아 가까이 가져가세요. 한쪽에 한 번씩 셉니다.',
   russianTwist: '러시안 트위스트입니다. 상체를 뒤로 기울이고 등은 곧게 편 채, 좌우로 몸통을 돌리세요. 한쪽에 한 번씩 셉니다.',
@@ -37,7 +37,7 @@ export const INTRO = {
 const NAMES = {
   squat: '스쿼트', lunge: '제자리 런지', pushup: '푸시업', kneePushup: '무릎 푸시업', plank: '플랭크', jumpingJack: '점핑잭',
   highKnees: '하이니', mountainClimber: '마운틴 클라이머', gluteBridge: '글루트 브릿지', crunch: '크런치', legRaise: '레그 레이즈', burpee: '버피',
-  sumoSquat: '와이드 스쿼트', sideLunge: '사이드 런지', curtsyLunge: '커트시 런지', donkeyKick: '킥백', calfRaise: '카프 레이즈',
+  sumoSquat: '와이드 스쿼트', sideLunge: '사이드 런지', curtsyLunge: '커트시 런지', donkeyKick: '동키 킥', calfRaise: '카프 레이즈',
   bicycleCrunch: '바이시클 크런치', russianTwist: '러시안 트위스트', flutterKick: '플러터 킥', deadBug: '데드버그',
   sidePlank: '사이드 플랭크', shoulderTap: '플랭크 숄더 탭', catCow: '캣카우', birdDog: '버드독',
 };
