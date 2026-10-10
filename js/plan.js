@@ -20,21 +20,21 @@ export const PROGRAMS = {
       A: { title: '하체 집중', tag: '하체', items: ['squat', 'lunge', 'gluteBridge', 'jumpingJack'] },
       B: { title: '상체·코어', tag: '상체·코어', items: ['pushup', 'plank', 'crunch', 'legRaise'] },
       C: { title: '전신 유산소', tag: '유산소', items: ['jumpingJack', 'highKnees', 'mountainClimber', 'squat', 'burpee'] },
-      R: { title: '가벼운 회복', tag: '회복', items: ['catCow', 'gluteBridge', 'plank', 'crunch'] },
+      R: { title: '가벼운 회복', tag: '회복', items: ['catCow', 'birdDog', 'gluteBridge', 'plank'] },
     } },
   lower21: { name: '21일 하체 라인', days: 21, desc: '엉덩이와 허벅지 라인을 집중해서',
     T: {
       A: { title: '엉덩이 집중', tag: '엉덩이', items: ['sumoSquat', 'donkeyKick', 'gluteBridge', 'curtsyLunge'] },
       B: { title: '허벅지 라인', tag: '허벅지', items: ['squat', 'sideLunge', 'lunge', 'calfRaise'] },
       C: { title: '하체 유산소', tag: '유산소', items: ['jumpingJack', 'sumoSquat', 'highKnees', 'curtsyLunge'] },
-      R: { title: '가벼운 회복', tag: '회복', items: ['catCow', 'gluteBridge', 'calfRaise'] },
+      R: { title: '가벼운 회복', tag: '회복', items: ['catCow', 'birdDog', 'gluteBridge', 'calfRaise'] },
     } },
   core14: { name: '14일 복부 집중', days: 14, desc: '윗배·아랫배·옆구리를 매일 조금씩',
     T: {
       A: { title: '윗배', tag: '윗배', items: ['crunch', 'bicycleCrunch', 'shoulderTap', 'plank'] },
       B: { title: '아랫배·옆구리', tag: '아랫배', items: ['legRaise', 'flutterKick', 'russianTwist', 'sidePlank'] },
       C: { title: '코어 유산소', tag: '유산소', items: ['mountainClimber', 'bicycleCrunch', 'deadBug', 'jumpingJack'] },
-      R: { title: '가벼운 회복', tag: '회복', items: ['catCow', 'deadBug', 'plank'] },
+      R: { title: '가벼운 회복', tag: '회복', items: ['catCow', 'birdDog', 'deadBug'] },
     } },
 };
 const CYCLE = ['A', 'B', 'C', 'A', 'B', 'C', 'R'];

@@ -26,6 +26,7 @@ export const MEDIA = {
   sidePlank: { dur: 4.5, reps: 1 },
   shoulderTap: { dur: 1.375, reps: 1 },
   catCow: { dur: 7.708, reps: 1 },
+  birdDog: { dur: 4.167, reps: 1 },
 };
 for (const [id, m] of Object.entries(MEDIA)) { m.src = `media/${id}.mp4`; m.poster = `media/${id}.jpg`; }
 
