@@ -83,6 +83,8 @@ export function runWorkout(root, { plan, onFinish, onExit, open = false, best = 
   </div>`;
 
   const $ = (id) => root.querySelector('#' + id);
+  // 이 동작을 해 본 날 수 (기록의 동작별 횟수로 센다)
+  const familiarDays = (id) => Object.values(db().logs).filter((l) => (l.reps?.[id] || 0) > 0).length;
   const avatar = new Avatar($('pCanvas'));
   const video = new VideoStage($('pVideo'));
   let useVideo = false;
@@ -152,13 +154,12 @@ export function runWorkout(root, { plan, onFinish, onExit, open = false, best = 
     music.setSoft(step.kind !== 'work');
 
     if (step.kind === 'intro') {
-      $('pSet').textContent = open ? '최고 기록 도전' : '동작 미리보기';
       $('pBadge').textContent = '';
-      introTotal = 7; timeLeft = introTotal;
-      // 소개 음성이 끝날 때까지 기다렸다가 시작한다
-      const cur = step;
-      voiceLength(`intro-${ex.id}`).then((d) => { if (step === cur && d + 1.2 > introTotal) { timeLeft += d + 1.2 - introTotal; introTotal = d + 1.2; } });
-      say(`intro-${ex.id}`);
+      // 3일 이상 해 본 동작은 소개를 짧게(4초, 음성 없이). 필요하면 '자세 설명 듣기'로 들을 수 있다
+      step.short = !open && familiarDays(ex.id) >= 3;
+      $('pSet').textContent = open ? '최고 기록 도전' : step.short ? '익숙한 동작 · 곧 시작해요' : '동작 미리보기';
+      introTotal = step.short ? 4 : 7; timeLeft = introTotal;
+      if (!step.short) explain();
     } else if (step.kind === 'work') {
       $('pSet').textContent = open ? '할 수 있는 만큼 끝까지' : `세트 ${step.set} / ${step.item.sets}`;
       $('pBadge').textContent = '';
@@ -175,10 +176,19 @@ export function runWorkout(root, { plan, onFinish, onExit, open = false, best = 
     renderInfo(); renderActions(); renderCount();
   }
 
+  // 동작 소개 음성: 끝날 때까지 기다렸다가 시작한다
+  function explain() {
+    const cur = step;
+    voiceLength(`intro-${ex.id}`).then((d) => { if (step === cur && d + 1.2 > timeLeft) { introTotal += d + 1.2 - timeLeft; timeLeft = d + 1.2; } });
+    say(`intro-${ex.id}`);
+  }
+
   function renderActions() {
     const a = $('pActions');
     if (step.kind === 'intro') {
-      a.innerHTML = `<button class="btn primary big" data-act="next"><span>바로 시작</span>${icon('arrow')}</button>`;
+      a.innerHTML = step.short
+        ? `<div class="row"><button class="btn ghost p-undo p-explain" data-act="explain">설명 듣기</button><button class="btn primary p-main" data-act="next"><span>바로 시작</span>${icon('arrow')}</button></div>`
+        : `<button class="btn primary big" data-act="next"><span>바로 시작</span>${icon('arrow')}</button>`;
     } else if (step.kind === 'rest') {
       a.innerHTML = `<div class="row"><button class="btn ghost p-undo" data-act="plus">+10초</button><button class="btn primary p-main" data-act="next"><span>휴식 건너뛰기</span>${icon('arrow')}</button></div>`;
     } else if (ex.type === 'hold') {
@@ -320,6 +330,7 @@ export function runWorkout(root, { plan, onFinish, onExit, open = false, best = 
         if (step.kind === 'work' && ex.type === 'hold') reps[ex.id] = (reps[ex.id] || 0) + Math.round(open ? timeLeft : step.item.target - Math.max(0, timeLeft));
         leaving(); enter(idx + 1); break;
       case 'plus': timeLeft += 10; renderCount(); break;
+      case 'explain': explain(); break;
       case 'pause': case 'music':
         paused = true; renderMusicPick(); $('pPause').classList.remove('hidden');
         stopVoice(); music.setSoft(true); break;
