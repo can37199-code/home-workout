@@ -30,6 +30,7 @@ export const INTRO = {
   deadBug: '데드버그입니다. 누워서 무릎을 구십 도로 들고 팔은 천장으로 뻗으세요. 팔과 반대쪽 다리를 천천히 뻗었다가 돌아와요.',
   sidePlank: '사이드 플랭크입니다. 팔꿈치를 어깨 바로 아래에 두고, 머리부터 발끝까지 일직선으로 골반을 들어 올리세요. 절반이 지나면 반대쪽으로 바꿔요.',
   shoulderTap: '플랭크 숄더 탭입니다. 팔을 편 플랭크 자세에서, 한 손으로 반대쪽 어깨를 가볍게 치세요. 골반이 흔들리지 않게 해요.',
+  sideLegRaise: '사이드 레그 레이즈입니다. 옆으로 누워 두 다리를 곧게 겹치고, 위쪽 다리를 무릎을 편 채 천천히 들어 올렸다가 내리세요. 골반은 앞뒤로 흔들리지 않게 해요. 절반을 하면 반대쪽으로 바꿔요.',
   birdDog: '버드독입니다. 네 발 자세에서 허리를 평평하게 두고, 한쪽 팔과 반대쪽 다리를 몸과 일직선이 되게 뻗으세요. 절반을 하면 반대쪽으로 바꿔요.',
   catCow: '캣카우입니다. 네 발 자세에서 숨을 내쉬며 등을 둥글게 말고, 숨을 들이쉬며 가슴을 열어 주세요. 천천히 호흡에 맞춰요.',
 };
@@ -39,7 +40,7 @@ const NAMES = {
   highKnees: '하이니', mountainClimber: '마운틴 클라이머', gluteBridge: '글루트 브릿지', crunch: '크런치', legRaise: '레그 레이즈', burpee: '버피',
   sumoSquat: '와이드 스쿼트', sideLunge: '사이드 런지', curtsyLunge: '커트시 런지', donkeyKick: '동키 킥', calfRaise: '카프 레이즈',
   bicycleCrunch: '바이시클 크런치', russianTwist: '러시안 트위스트', flutterKick: '플러터 킥', deadBug: '데드버그',
-  sidePlank: '사이드 플랭크', shoulderTap: '플랭크 숄더 탭', catCow: '캣카우', birdDog: '버드독',
+  sidePlank: '사이드 플랭크', shoulderTap: '플랭크 숄더 탭', catCow: '캣카우', birdDog: '버드독', sideLegRaise: '사이드 레그 레이즈',
 };
 
 export const LINES = {};

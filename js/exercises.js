@@ -153,6 +153,8 @@ Object.assign(EXERCISES, {
     tips: ['팔꿈치는 어깨 바로 아래', '머리부터 발끝까지 일직선', '골반이 처지지 않게 들어 올려요'] },
   shoulderTap: { name: '플랭크 숄더 탭', view: 'side', type: 'reps', base: 1.4, met: 5, sides: true, unit: '절반에서 반대 손', switchVoice: 'switch-side',
     tips: ['손은 어깨 아래, 몸은 일직선', '한 손으로 반대쪽 어깨를 톡', '골반이 흔들리지 않게'] },
+  sideLegRaise: { name: '사이드 레그 레이즈', view: 'side', type: 'reps', base: 2.750, met: 3.5, sides: true, unit: '절반에서 다리 바꾸기',
+    tips: ['옆으로 누워 두 다리를 곧게 겹쳐요', '위쪽 다리를 무릎 편 채 들어 올려요', '골반이 뒤로 넘어가지 않게 천천히'] },
   birdDog: { name: '버드독', view: 'side', type: 'reps', base: 4.2, met: 3, sides: true, unit: '절반에서 반대쪽', switchVoice: 'switch-side',
     tips: ['네 발 자세, 허리는 평평하게', '팔과 반대쪽 다리를 몸과 일직선으로', '골반이 돌아가지 않게 천천히'] },
   catCow: { name: '캣카우', view: 'side', type: 'hold', base: 7.7, met: 2.5,

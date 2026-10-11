@@ -25,8 +25,8 @@ export const PROGRAMS = {
   lower21: { name: '21일 하체 라인', days: 21, desc: '엉덩이와 허벅지 라인을 집중해서',
     T: {
       A: { title: '엉덩이 집중', tag: '엉덩이', items: ['sumoSquat', 'donkeyKick', 'gluteBridge', 'curtsyLunge'] },
-      B: { title: '허벅지 라인', tag: '허벅지', items: ['squat', 'sideLunge', 'lunge', 'calfRaise'] },
-      C: { title: '하체 유산소', tag: '유산소', items: ['jumpingJack', 'sumoSquat', 'highKnees', 'curtsyLunge'] },
+      B: { title: '허벅지 라인', tag: '허벅지', items: ['squat', 'sideLunge', 'sideLegRaise', 'lunge', 'calfRaise'] },
+      C: { title: '하체 유산소', tag: '유산소', items: ['jumpingJack', 'sumoSquat', 'highKnees', 'sideLegRaise'] },
       R: { title: '가벼운 회복', tag: '회복', items: ['catCow', 'birdDog', 'gluteBridge', 'calfRaise'] },
     } },
   core14: { name: '14일 복부 집중', days: 14, desc: '윗배·아랫배·옆구리를 매일 조금씩',
